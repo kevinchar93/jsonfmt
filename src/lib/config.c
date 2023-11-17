@@ -2,27 +2,33 @@
 #include <string.h>
 #include <stdio.h>
 
-bool includesString(const char *container[], int numItems, const char *compareString) {
+void saferFree(void *ptr) {
+  if (ptr != NULL) {
+    free(ptr);
+  }
+}
 
-  for (int i = 0; i < numItems; ++i) {
-    const char *containerString = container[i];
-    const u_int32_t containerStringLen = strlen(containerString);
+bool doesArrayIncludeString(const char *array[],
+                            int arrayLen,
+                            const char *targetString) {
 
-    const u_int32_t compareStringLen = strlen(compareString);
+  for (int i = 0; i < arrayLen; ++i) {
+    const char *currentString = array[i];
 
-    u_int32_t compareLen = containerStringLen < compareStringLen ? containerStringLen : compareStringLen;
+    const u_int32_t currentStringLen = strlen(currentString);
+    const u_int32_t targetStringLen = strlen(targetString);
+    const u_int32_t shortestLen = currentStringLen < targetStringLen ? currentStringLen : targetStringLen;
 
-    if (strncmp(containerString, compareString, compareLen) == 0) {
+    if (strncmp(currentString, targetString, shortestLen) == 0) {
       return true;
     }
   }
-
   return false;
 }
 
 bool hasUnknownFlags(char *flags[], int numFlags, char **unknownFlag) {
-  const short numKnownFlags = 9;
-  char *knownFlags[numKnownFlags] = {
+  #define numKnownFlags 9
+  const char *knownFlags[numKnownFlags] = {
       "--spaces",
       "-s",
       "--tabs",
@@ -36,7 +42,7 @@ bool hasUnknownFlags(char *flags[], int numFlags, char **unknownFlag) {
 
   for (int i = 0; i < numFlags; ++i) {
     char *flag = flags[i];
-    if (!includesString(knownFlags, numKnownFlags, flag)) {
+    if (!doesArrayIncludeString(knownFlags, numKnownFlags, flag)) {
       *unknownFlag = flag;
       return true;
     }
@@ -45,17 +51,94 @@ bool hasUnknownFlags(char *flags[], int numFlags, char **unknownFlag) {
   return false;
 }
 
-bool hasBothFlags(char *flags, char *shortFlag, char *longFlag) {
-  return true;
+bool count_occurences_of_y_in_x(const char *y[], int yLen, const char *x[], int xLen) {
+  int count = 0;
+  // go over all strings in x
+  for (int i = 0; i < xLen; ++i) {
+    const char *xString = x[i];
+    if (doesArrayIncludeString(y, yLen, xString)) {
+      // count each time y includes a current x string
+      count++;
+    }
+  }
+  return count;
 }
 
-void get_flags_and_args(int argc,
+struct args_and_flags {
+  char **args;
+  int numArgs;
+  char **flags;
+  int numFlags;
+  int spacesFlagIndex;
+  struct {
+    int spaces;
+    int tabs;
+    int write;
+    int lf;
+    int crlF;
+  } flagCount;
+};
+
+void count_each_flag(const char *flag, int flagIndex, struct args_and_flags *argsAndFlags) {
+#define spacesFlagsLen 2
+  const char *spacesFlags[] = {"--spaces", "-s"};
+
+  if (doesArrayIncludeString(spacesFlags, spacesFlagsLen, flag)) {
+    argsAndFlags->flagCount.spaces += 1;
+    argsAndFlags->spacesFlagIndex = flagIndex;
+    return;
+  }
+
+#define tabsFlagsLen 2
+  const char *tabsFlags[] = {"--tabs", "-t"};
+
+  if (doesArrayIncludeString(tabsFlags, tabsFlagsLen, flag)) {
+    argsAndFlags->flagCount.tabs += 1;
+    return;
+  }
+
+#define writeFlagsLen 2
+  const char *writeFlags[] = {"--write", "-w"};
+
+  if (doesArrayIncludeString(writeFlags, writeFlagsLen, flag)) {
+    argsAndFlags->flagCount.write += 1;
+    return;
+  }
+
+#define lfFlagsLen 2
+  const char *lfFlags[] = {"--lf"};
+
+  if (doesArrayIncludeString(lfFlags, lfFlagsLen, flag)) {
+    argsAndFlags->flagCount.lf += 1;
+    return;
+  }
+
+#define crlfFlagsLen 2
+  const char *crlfFlags[] = {"--crlf"};
+
+  if (doesArrayIncludeString(crlfFlags, crlfFlagsLen, flag)) {
+    argsAndFlags->flagCount.crlF += 1;
+    return;
+  }
+}
+
+void free_args_and_flags(struct args_and_flags *argsAndFlags) {
+  saferFree(argsAndFlags->args);
+  saferFree(argsAndFlags->flags);
+  saferFree(argsAndFlags);
+}
+
+void new_args_and_flags(int argc,
                         char *argv[],
-                        char *flags[],
-                        u_int32_t *numFlags,
-                        char *args[],
-                        u_int32_t *numArgs,
-                        u_int32_t *spacesFlagIndex) {
+                        struct args_and_flags **outputArgsAndFlags) {
+
+  // init memory for struct
+  struct args_and_flags *argsAndFlags = malloc(sizeof(struct args_and_flags));
+  memset(argsAndFlags, 0, sizeof(struct args_and_flags));
+
+  // init memory for args & flags char pointer arrays - base size on argc
+  argsAndFlags->args = malloc(argc * sizeof(char *));
+  argsAndFlags->flags = malloc(argc * sizeof(char *));
 
   for (int i = 0; i < argc; i++) {
     // skip first CLI arg (program name)
@@ -70,27 +153,22 @@ void get_flags_and_args(int argc,
     bool isFlag = strncmp(currentArg, "-", 1) == 0 && argLen >= 2;
 
     if (isFlag) {
-      flags[*numFlags] = currentArg;
-      (*numFlags)++;
-
-      if (strncmp(currentArg, "-s", argLen) == 0 ||
-          strncmp(currentArg, "--spaces", argLen) == 0) {
-        // save index of --spaces arg
-        *spacesFlagIndex = i;
-      }
+      argsAndFlags->flags[argsAndFlags->numFlags] = currentArg;
+      argsAndFlags->numFlags += 1;
+      count_each_flag(currentArg, i, argsAndFlags);
     } else {
-      args[*numArgs] = currentArg;
-      (*numArgs)++;
+      argsAndFlags->args[argsAndFlags->numArgs] = currentArg;
+      argsAndFlags->numArgs += 1;
     }
   }
+
+  *outputArgsAndFlags = argsAndFlags;
 }
 
 jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config **output_config) {
 
-  const size_t jsonfmt_config_size = sizeof(struct jsonfmt_config);
-
-  struct jsonfmt_config *config = (struct jsonfmt_config *) malloc(jsonfmt_config_size);
-  memset(config, 0, jsonfmt_config_size);
+  struct jsonfmt_config *config = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
+  memset(config, 0, sizeof(struct jsonfmt_config));
 
   // init config with defaults
   config->useSpaces = true;
@@ -109,42 +187,31 @@ jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config
     return JSONFMT_OK;
   }
 
+  struct args_and_flags *argsAndFlags = NULL;
 
-  char *flags[argc];
-  memset(flags, 0, argc * sizeof(char *));
-  u_int32_t numFlags = 0;
-
-  char *args[argc];
-  memset(args, 0, argc * sizeof(char *));
-  u_int32_t numArgs = 0;
-
-  u_int32_t spacesFlagIndex = -1;
-
-  get_flags_and_args(argc, argv, flags, &numFlags, args, &numArgs, &spacesFlagIndex);
+  new_args_and_flags(argc, argv, &argsAndFlags);
 
   char *unknownFlag = NULL;
 
-  if (hasUnknownFlags(flags, numFlags, &unknownFlag)) {
+  if (hasUnknownFlags(argsAndFlags->flags, argsAndFlags->numFlags, &unknownFlag)) {
     printf("found unknown flag: %s \n", unknownFlag);
-  } else {
-    printf("did not find unknown flags \n");
+    return JSONFMT_ERR_UNRECOGNISED_OPTION;
   }
 
+  // print testing =============================================================
   printf("flags: \n");
-  for (int i = 0; i < numFlags; i++) {
-    printf(" %s \n", flags[i]);
+  for (int i = 0; i < argsAndFlags->numFlags; i++) {
+    printf(" %s \n", argsAndFlags->flags[i]);
   }
 
   printf("args: \n");
-  for (int i = 0; i < numArgs; i++) {
-    printf(" %s \n", args[i]);
+  for (int i = 0; i < argsAndFlags->numArgs; i++) {
+    printf(" %s \n", argsAndFlags->args[i]);
   }
 
-  printf("spaced index: %d \n", spacesFlagIndex);
-
-  // get flags
-
-  // get args
+  printf("spaced index: %d \n", argsAndFlags->spacesFlagIndex);
+  //============================================================================
+  free_args_and_flags(argsAndFlags);
 
   return 1;
 }
