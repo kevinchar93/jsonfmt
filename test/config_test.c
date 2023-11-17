@@ -104,7 +104,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //}
 //
 //Test(new_jsonfmt_config, set_writeToFile_field,
-//     .description = "sets writeToFile field in jsonfmt_config when '-w' or '--write' flag is set") {
+//     .description = "sets write field in jsonfmt_config when '-w' or '--write' flag is set") {
 //  {
 //    int argc = 2;
 //    char *argv[] = {
@@ -116,7 +116,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 //
 //    cr_expect_eq(err, JSONFMT_OK);
-//    cr_expect_eq(config->writeToFile, true);
+//    cr_expect_eq(config->write, true);
 //    free_jsonfmt_config(&config);
 //  }
 //
@@ -131,7 +131,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 //
 //    cr_expect_eq(err, JSONFMT_OK);
-//    cr_expect_eq(config->writeToFile, true);
+//    cr_expect_eq(config->write, true);
 //    free_jsonfmt_config(&config);
 //  }
 //}
@@ -244,7 +244,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //  cr_expect_eq(err, JSONFMT_OK);
 //  cr_expect_eq(config->useSpaces, true);
 //  cr_expect_eq(config->numSpaces, 8);
-//  cr_expect_eq(config->writeToFile, true);
+//  cr_expect_eq(config->write, true);
 //  cr_expect_eq(config->useLF, true);
 //
 //  free_jsonfmt_config(&config);
@@ -266,7 +266,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //  cr_expect_eq(err, JSONFMT_OK);
 //  cr_expect_eq(config->useTabs, true);
-//  cr_expect_eq(config->writeToFile, true);
+//  cr_expect_eq(config->write, true);
 //  cr_expect_eq(config->useCRLF, true);
 //
 //  free_jsonfmt_config(&config);
@@ -323,21 +323,49 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //  free_jsonfmt_config(&config);
 //};
 //
-//Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
-//     .description = "returns error 'JSONFMT_ERR_UNRECOGNISED_OPTION' when given invalid args") {
-//  int argc = 3;
-//  char *argv[] = {
-//      ".../jsonfmt",
-//      "--foo",
-//  };
-//  struct jsonfmt_config *config = NULL;
-//
-//  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-//
-//  cr_expect_eq(err, JSONFMT_ERR_UNRECOGNISED_OPTION);
-//
-//  free_jsonfmt_config(&config);
-//}
+Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
+     .description = "returns error 'JSONFMT_ERR_UNRECOGNISED_OPTION' when given unrecognised flag argument") {
+  int argc = 3;
+  char *argv[] = {
+      ".../jsonfmt",
+      "--foo",
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_ERR_UNRECOGNISED_OPTION);
+
+  free_jsonfmt_config(&config);
+}
+
+Test(new_jsonfmt_config, fail_when_options_are_repeated,
+     .description = "returns error 'JSONFMT_ERR_REPEATED_OPTION' when none variadic flags are repeated more than once") {
+
+  #define numTests 5
+  #define argc 3
+
+  char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--spaces", "-s"},
+      {".../jsonfmt", "--tabs", "-t"},
+      {".../jsonfmt", "--write", "-w"},
+      {".../jsonfmt", "--lf", "--lf"},
+      {".../jsonfmt", "--crlf", "--crlf"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    char **argv = argvs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_ERR_REPEATED_OPTION);
+
+    free_jsonfmt_config(&config);
+  }
+}
+
 //
 //Test(new_jsonfmt_config, fail_when_invalid_argument_type_given_spaces,
 //     .description = "returns error 'JSONFMT_ERR_INCORRECT_ARG_TYPE' when given invalid arg type for --spaces") {
