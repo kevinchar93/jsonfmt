@@ -49,41 +49,41 @@ bool hasBothFlags(char *flags, char *shortFlag, char *longFlag) {
   return true;
 }
 
-//void get_flags_and_args(int argc,
-//                        char *argv[],
-//                        char *flags[],
-//                        u_int32_t *numFlags,
-//                        char *args[],
-//                        u_int32_t *numArgs,
-//                        u_int32_t *spacesFlagIndex) {
-//
-//  for (int i = 0; i < argc; i++) {
-//    // skip first CLI arg (program name)
-//    if (i == 0) continue;
-//
-//    char *currentArg = argv[i];
-//    const u_int32_t argLen = strlen(currentArg);
-//
-//    if (argLen == 0) continue;
-//
-//    // must begin with '-' & be at least 2 chars long
-//    bool isFlag = strncmp(currentArg, "-", 1) == 0 && argLen >= 2;
-//
-//    if (isFlag) {
-//      flags[*numFlags] = currentArg;
-//      numFlags++;
-//
-//      if (strncmp(currentArg, "-s", argLen) == 0 ||
-//          strncmp(currentArg, "--spaces", argLen) == 0) {
-//        // save index of --spaces arg
-//        *spacesFlagIndex = i;
-//      }
-//    } else {
-//      args[*numArgs] = currentArg;
-//      numArgs++;
-//    }
-//  }
-//}
+void get_flags_and_args(int argc,
+                        char *argv[],
+                        char *flags[],
+                        u_int32_t *numFlags,
+                        char *args[],
+                        u_int32_t *numArgs,
+                        u_int32_t *spacesFlagIndex) {
+
+  for (int i = 0; i < argc; i++) {
+    // skip first CLI arg (program name)
+    if (i == 0) continue;
+
+    char *currentArg = argv[i];
+    const u_int32_t argLen = strlen(currentArg);
+
+    if (argLen == 0) continue;
+
+    // must begin with '-' & be at least 2 chars long
+    bool isFlag = strncmp(currentArg, "-", 1) == 0 && argLen >= 2;
+
+    if (isFlag) {
+      flags[*numFlags] = currentArg;
+      (*numFlags)++;
+
+      if (strncmp(currentArg, "-s", argLen) == 0 ||
+          strncmp(currentArg, "--spaces", argLen) == 0) {
+        // save index of --spaces arg
+        *spacesFlagIndex = i;
+      }
+    } else {
+      args[*numArgs] = currentArg;
+      (*numArgs)++;
+    }
+  }
+}
 
 jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config **output_config) {
 
@@ -120,32 +120,7 @@ jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config
 
   u_int32_t spacesFlagIndex = -1;
 
-//  TODO: get this function working (no segfault)
-//  get_flags_and_args(argc, argv, flags, &numFlags, args, &numArgs, &spacesFlagIndex);
-
-  for (int i = 0; i < argc; i++) {
-    // skip first CLI arg (program name)
-    if (i == 0) continue;
-
-    const char *currentArg = argv[i];
-    const u_int32_t argLen = strlen(currentArg);
-
-    if (argLen == 0) continue;
-
-    bool isFlag = strncmp(currentArg, "-", 1) == 0;
-
-    if (isFlag) {
-      flags[numFlags] = currentArg;
-      numFlags++;
-      if (strncmp(currentArg, "-s", argLen) == 0 || strncmp(currentArg, "--spaces", argLen) == 0) {
-        // save index of spaces arg
-        spacesFlagIndex = i;
-      }
-    } else {
-      args[numArgs] = currentArg;
-      numArgs++;
-    }
-  }
+  get_flags_and_args(argc, argv, flags, &numFlags, args, &numArgs, &spacesFlagIndex);
 
   char *unknownFlag = NULL;
 
