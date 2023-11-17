@@ -12,6 +12,7 @@ const char *const jsfmt_error_strings[] =
         "incorrect argument type:",
         "paths does not exist:",
         "no .json files found in input path(s):",
+        "option appears more than once:",
     };
 
 
