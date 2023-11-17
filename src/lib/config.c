@@ -8,25 +8,25 @@ void saferFree(void *ptr) {
   }
 }
 
-bool doesArrayIncludeString(const char *array[],
-                            int arrayLen,
-                            const char *targetString) {
+bool array_includes_string(const char *array[],
+                           int arrayLen,
+                           const char *targetString) {
 
   for (int i = 0; i < arrayLen; ++i) {
-    const char *currentString = array[i];
+    const char *currentArrayString = array[i];
 
-    const u_int32_t currentStringLen = strlen(currentString);
+    const u_int32_t currentStringLen = strlen(currentArrayString);
     const u_int32_t targetStringLen = strlen(targetString);
-    const u_int32_t shortestLen = currentStringLen < targetStringLen ? currentStringLen : targetStringLen;
+    const u_int32_t longestLen = currentStringLen > targetStringLen ? currentStringLen : targetStringLen;
 
-    if (strncmp(currentString, targetString, shortestLen) == 0) {
+    if (strncmp(currentArrayString, targetString, longestLen) == 0) {
       return true;
     }
   }
   return false;
 }
 
-bool hasUnknownFlags(char *flags[], int numFlags, char **unknownFlag) {
+bool has_unknown_flags(char *flags[], int numFlags, char **unknownFlag) {
   #define numKnownFlags 9
   const char *knownFlags[numKnownFlags] = {
       "--spaces",
@@ -42,12 +42,11 @@ bool hasUnknownFlags(char *flags[], int numFlags, char **unknownFlag) {
 
   for (int i = 0; i < numFlags; ++i) {
     char *flag = flags[i];
-    if (!doesArrayIncludeString(knownFlags, numKnownFlags, flag)) {
+    if (!array_includes_string(knownFlags, numKnownFlags, flag)) {
       *unknownFlag = flag;
       return true;
     }
   }
-
   return false;
 }
 
@@ -56,7 +55,7 @@ bool count_occurences_of_y_in_x(const char *y[], int yLen, const char *x[], int 
   // go over all strings in x
   for (int i = 0; i < xLen; ++i) {
     const char *xString = x[i];
-    if (doesArrayIncludeString(y, yLen, xString)) {
+    if (array_includes_string(y, yLen, xString)) {
       // count each time y includes a current x string
       count++;
     }
@@ -70,56 +69,42 @@ struct args_and_flags {
   char **flags;
   int numFlags;
   int spacesFlagIndex;
-  struct {
-    int spaces;
-    int tabs;
-    int write;
-    int lf;
-    int crlF;
-  } flagCount;
 };
 
-void count_each_flag(const char *flag, int flagIndex, struct args_and_flags *argsAndFlags) {
-#define spacesFlagsLen 2
-  const char *spacesFlags[] = {"--spaces", "-s"};
+bool has_doubled_flag(char **cliFlags, int cliFlagsLen, const char **doubledFlag) {
+  #define flagsFieldSize 2
+  struct supported_flag_tuple {
+    int count;
+    const char *flags[flagsFieldSize];
+  };
 
-  if (doesArrayIncludeString(spacesFlags, spacesFlagsLen, flag)) {
-    argsAndFlags->flagCount.spaces += 1;
-    argsAndFlags->spacesFlagIndex = flagIndex;
-    return;
+  #define numSupportedFlags 5
+  struct supported_flag_tuple supported_flags[numSupportedFlags] = {
+      {.flags = {"-s", "--spaces"}, .count = 0},
+      {.flags = {"-t", "--tabs"}, .count = 0},
+      {.flags = {"-w", "--write"}, .count = 0},
+      {.flags = {"", "--lf"}, .count = 0},
+      {.flags = {"", "--crlf"}, .count = 0},
+  };
+
+  for (int cliFlagIdx = 0; cliFlagIdx < cliFlagsLen; ++cliFlagIdx) {
+    const char *currentCliFlag = cliFlags[cliFlagIdx];
+
+    for (int suppFlagIdx = 0; suppFlagIdx < numSupportedFlags; ++suppFlagIdx) {
+
+      struct supported_flag_tuple *currentSuppFlag = &(supported_flags[suppFlagIdx]);
+
+      if (array_includes_string(currentSuppFlag->flags, flagsFieldSize, currentCliFlag)) {
+        currentSuppFlag->count += 1;
+      }
+
+      if (currentSuppFlag->count > 1) {
+        *doubledFlag = currentCliFlag;
+        return true;
+      }
+    }
   }
-
-#define tabsFlagsLen 2
-  const char *tabsFlags[] = {"--tabs", "-t"};
-
-  if (doesArrayIncludeString(tabsFlags, tabsFlagsLen, flag)) {
-    argsAndFlags->flagCount.tabs += 1;
-    return;
-  }
-
-#define writeFlagsLen 2
-  const char *writeFlags[] = {"--write", "-w"};
-
-  if (doesArrayIncludeString(writeFlags, writeFlagsLen, flag)) {
-    argsAndFlags->flagCount.write += 1;
-    return;
-  }
-
-#define lfFlagsLen 2
-  const char *lfFlags[] = {"--lf"};
-
-  if (doesArrayIncludeString(lfFlags, lfFlagsLen, flag)) {
-    argsAndFlags->flagCount.lf += 1;
-    return;
-  }
-
-#define crlfFlagsLen 2
-  const char *crlfFlags[] = {"--crlf"};
-
-  if (doesArrayIncludeString(crlfFlags, crlfFlagsLen, flag)) {
-    argsAndFlags->flagCount.crlF += 1;
-    return;
-  }
+  return false;
 }
 
 void free_args_and_flags(struct args_and_flags *argsAndFlags) {
@@ -155,7 +140,6 @@ void new_args_and_flags(int argc,
     if (isFlag) {
       argsAndFlags->flags[argsAndFlags->numFlags] = currentArg;
       argsAndFlags->numFlags += 1;
-      count_each_flag(currentArg, i, argsAndFlags);
     } else {
       argsAndFlags->args[argsAndFlags->numArgs] = currentArg;
       argsAndFlags->numArgs += 1;
@@ -193,9 +177,16 @@ jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config
 
   char *unknownFlag = NULL;
 
-  if (hasUnknownFlags(argsAndFlags->flags, argsAndFlags->numFlags, &unknownFlag)) {
+  if (has_unknown_flags(argsAndFlags->flags, argsAndFlags->numFlags, &unknownFlag)) {
     printf("found unknown flag: %s \n", unknownFlag);
     return JSONFMT_ERR_UNRECOGNISED_OPTION;
+  }
+
+  const char *doubledFlag = NULL;
+
+  if (has_doubled_flag(argsAndFlags->flags, argsAndFlags->numFlags, &doubledFlag)) {
+    printf("found repeated flag: %s \n", doubledFlag);
+    return JSONFMT_ERR_REPEATED_OPTION;
   }
 
   // print testing =============================================================
