@@ -30,7 +30,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
   cr_expect_eq(config->paths, NULL);
   cr_expect_eq(config->jsonFilePaths, NULL);
 
-  free_jsonfmt_config(&config);
+  free_jsonfmt_config(config);
 }
 
 //Test(new_jsonfmt_config, set_useSpaces_and_numSpaces_fields,
@@ -49,7 +49,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //    cr_expect_eq(err, JSONFMT_OK);
 //    cr_expect_eq(config->useSpaces, true);
 //    cr_expect_eq(config->numSpaces, 4);
-//    free_jsonfmt_config(&config);
+//    free_jsonfmt_config(config);
 //  }
 //
 //  {
@@ -66,7 +66,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //    cr_expect_eq(err, JSONFMT_OK);
 //    cr_expect_eq(config->useSpaces, true);
 //    cr_expect_eq(config->numSpaces, 4);
-//    free_jsonfmt_config(&config);
+//    free_jsonfmt_config(config);
 //  }
 //}
 //
@@ -84,7 +84,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //    cr_expect_eq(err, JSONFMT_OK);
 //    cr_expect_eq(config->useTabs, true);
-//    free_jsonfmt_config(&config);
+//    free_jsonfmt_config(config);
 //  }
 //
 //  {
@@ -99,7 +99,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //    cr_expect_eq(err, JSONFMT_OK);
 //    cr_expect_eq(config->useTabs, true);
-//    free_jsonfmt_config(&config);
+//    free_jsonfmt_config(config);
 //  }
 //}
 //
@@ -117,7 +117,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //    cr_expect_eq(err, JSONFMT_OK);
 //    cr_expect_eq(config->write, true);
-//    free_jsonfmt_config(&config);
+//    free_jsonfmt_config(config);
 //  }
 //
 //  {
@@ -132,7 +132,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //    cr_expect_eq(err, JSONFMT_OK);
 //    cr_expect_eq(config->write, true);
-//    free_jsonfmt_config(&config);
+//    free_jsonfmt_config(config);
 //  }
 //}
 //
@@ -149,7 +149,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //  cr_expect_eq(err, JSONFMT_OK);
 //  cr_expect_eq(config->useLF, true);
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, set_useCRLF_field,
@@ -165,7 +165,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //  cr_expect_eq(err, JSONFMT_OK);
 //  cr_expect_eq(config->useCRLF, true);
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, set_useStdIn_field,
@@ -182,7 +182,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //  cr_expect_eq(err, JSONFMT_OK);
 //  cr_expect_eq(config->useStdIn, true);
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, set_paths_field_single,
@@ -201,7 +201,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //  cr_expect_eq((*config->paths)[0], "./test-dir");
 //  cr_expect_eq((*config->jsonFilePaths)[0], "./test-dir/test-json-b.json");
 //  cr_expect_eq((*config->jsonFilePaths)[0], "./test-dir/test-json-c.json");
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, set_paths_field_multiple,
@@ -223,7 +223,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //  cr_expect_eq((*config->jsonFilePaths)[1], "./test-dir/test-json-c.json");
 //  cr_expect_eq((*config->jsonFilePaths)[2], "./test-json-a.json");
 //
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, multi_flag_combo_1,
@@ -247,7 +247,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //  cr_expect_eq(config->write, true);
 //  cr_expect_eq(config->useLF, true);
 //
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, multi_flag_combo_2,
@@ -269,44 +269,63 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //  cr_expect_eq(config->write, true);
 //  cr_expect_eq(config->useCRLF, true);
 //
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
-//
-//Test(new_jsonfmt_config, fail_when_useSpaces_and_useTabs_is_set,
-//     .description = "returns error 'JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG' when -s/--spaces & -t/--tabs flags are set at the same time") {
-//  int argc = 3;
-//  char *argv[] = {
-//      ".../jsonfmt",
-//      "--tabs",
-//      "--spaces",
-//      "8",
-//  };
-//  struct jsonfmt_config *config = NULL;
-//
-//  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-//
-//  cr_expect_eq(err, JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG);
-//
-//  free_jsonfmt_config(&config);
-//}
-//
-//Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
-//     .description = "returns error 'JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG' when --lf & --crlf flags are set at the same time") {
-//  int argc = 3;
-//  char *argv[] = {
-//      ".../jsonfmt",
-//      "--lf",
-//      "--crlf",
-//  };
-//  struct jsonfmt_config *config = NULL;
-//
-//  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-//
-//  cr_expect_eq(err, JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG);
-//
-//  free_jsonfmt_config(&config);
-//}
-//
+
+Test(new_jsonfmt_config, fail_when_useSpaces_and_useTabs_is_set,
+     .description = "returns error 'JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG' when -s/--spaces & -t/--tabs flags are set at the same time") {
+
+  enum {
+    numTests = 4,
+    argc = 3
+  };
+
+  char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--spaces", "--tabs"},
+      {".../jsonfmt", "-s",   "-t"},
+      {".../jsonfmt", "--tabs",   "-s"},
+      {".../jsonfmt", "-t",   "--spaces"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    char **argv = argvs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG);
+
+    free_jsonfmt_config(config);
+  }
+}
+
+Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
+     .description = "returns error 'JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG' when --lf & --crlf flags are set at the same time") {
+
+  enum {
+    numTests = 2,
+    argc = 3
+  };
+
+  char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--lf", "--crlf"},
+      {".../jsonfmt", "--crlf",   "--lf"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    char **argv = argvs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG);
+
+    free_jsonfmt_config(config);
+  }
+}
+
 //Test(new_jsonfmt_config, fail_when_writeToFile_set_with_no_path,
 //     .description = "returns error 'JSONFMT_ERR_CANT_WRITE_WITH_NO_PATH' when --write & flag is set & no path argument is set") {
 //  int argc = 3;
@@ -320,7 +339,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 //
 //  cr_expect_eq(err, JSONFMT_ERR_CANT_WRITE_WITH_NO_PATH);
 //
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //};
 //
 Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
@@ -336,21 +355,23 @@ Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
 
   cr_expect_eq(err, JSONFMT_ERR_UNRECOGNISED_OPTION);
 
-  free_jsonfmt_config(&config);
+  free_jsonfmt_config(config);
 }
 
 Test(new_jsonfmt_config, fail_when_options_are_repeated,
      .description = "returns error 'JSONFMT_ERR_REPEATED_OPTION' when none variadic flags are repeated more than once") {
 
-  #define numTests 5
-  #define argc 3
+  enum {
+    numTests = 5,
+    argc = 3
+  };
 
   char *argvs[numTests][argc] = {
       {".../jsonfmt", "--spaces", "-s"},
-      {".../jsonfmt", "--tabs", "-t"},
-      {".../jsonfmt", "--write", "-w"},
-      {".../jsonfmt", "--lf", "--lf"},
-      {".../jsonfmt", "--crlf", "--crlf"},
+      {".../jsonfmt", "--tabs",   "-t"},
+      {".../jsonfmt", "--write",  "-w"},
+      {".../jsonfmt", "--lf",     "--lf"},
+      {".../jsonfmt", "--crlf",   "--crlf"},
   };
 
   for (int i = 0; i < numTests; ++i) {
@@ -362,7 +383,7 @@ Test(new_jsonfmt_config, fail_when_options_are_repeated,
 
     cr_expect_eq(err, JSONFMT_ERR_REPEATED_OPTION);
 
-    free_jsonfmt_config(&config);
+    free_jsonfmt_config(config);
   }
 }
 
@@ -381,7 +402,7 @@ Test(new_jsonfmt_config, fail_when_options_are_repeated,
 //
 //  cr_expect_eq(err, JSONFMT_ERR_INCORRECT_ARG_TYPE);
 //
-//  free_jsonfmt_config(&config);
+//  free_jsonfmt_config(config);
 //}
 //
 //Test(new_jsonfmt_config, fail_when_path_doesnt_exist,

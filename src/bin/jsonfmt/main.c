@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 
   jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 
-  free_jsonfmt_config(&config);
+  free_jsonfmt_config(config);
 
 
   return 0;
