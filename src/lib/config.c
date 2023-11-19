@@ -420,10 +420,8 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                           2);
 
   if (argsAndFlags->numArgs < 1) {
-    // no path provided - us stdin
+    // no args mean no path supplied, we should us stdin
     config->useStdIn = true;
-    // TODO: handle checking if stdin has content & if we need to store it temporarily
-    return JSONFMT_OK;
   }
 
   // TODO check if args are paths or files
