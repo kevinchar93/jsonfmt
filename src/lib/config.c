@@ -1,6 +1,9 @@
 #include "config.h"
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <limits.h>
 
 void saferFree(void *ptr) {
   if (ptr != NULL) {
@@ -34,7 +37,7 @@ bool array_includes_any_target_strings(const char *array[],
 bool array_includes_string(const char *array[],
                            int arrayLen,
                            const char *targetString) {
-  const char*targetStrings[1] = {targetString};
+  const char *targetStrings[1] = {targetString};
   return array_includes_any_target_strings(array, arrayLen, targetStrings, 1);
 }
 
@@ -205,6 +208,53 @@ bool has_lf_and_crlf_flag(const char *cliFlags[], int cliFlagsLen) {
   return false;
 }
 
+jsonfmt_error_t get_spaces_flag_value(int argc,
+                                      const char *argv[],
+                                      int spacesFlagIndex,
+                                      long int *outNumSpaces) {
+
+  int spacesValueIndex = spacesFlagIndex + 1;
+
+  if (spacesValueIndex >= argc) {
+    printf("no value provided for spaces flag\n");
+    return JSONFMT_ERR_NO_VALUE_PROVIDED;
+  }
+
+  const char *spacesValueStr = argv[spacesValueIndex];
+  char *endPtr;
+  long int value;
+
+  errno = 0;
+  value = strtol(spacesValueStr, &endPtr, 10);
+
+  if (errno == ERANGE && (value == LONG_MAX || value == LONG_MIN)) {
+    printf("parsed value falls out of range\n");
+    // error - parsed value falls out of range
+    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
+  }
+
+  if (errno != 0 && value == 0) {
+    // an error happened & the value could not be parsed
+    printf("parsed value has incorrect type\n");
+    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
+  }
+
+  if (*endPtr != '\0') {
+    // error - number has string on end of it eg "345fd"
+    printf("parsed value has incorrect type - string attached to number value\n");
+    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
+  }
+
+  if (endPtr == spacesValueStr) {
+    // error - no digits found in the string "spacesValueStr"
+    printf("parsed value has incorrect type - no digits found\n");
+    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
+  }
+
+  *outNumSpaces = value;
+  return JSONFMT_OK;
+};
+
 void free_args_and_flags(struct args_and_flags *argsAndFlags) {
   saferFree(argsAndFlags->args);
   saferFree(argsAndFlags->flags);
@@ -212,7 +262,7 @@ void free_args_and_flags(struct args_and_flags *argsAndFlags) {
 }
 
 void new_args_and_flags(int argc,
-                        char *argv[],
+                        const char *argv[],
                         struct args_and_flags **outputArgsAndFlags) {
 
   // init memory for struct
@@ -227,7 +277,7 @@ void new_args_and_flags(int argc,
     // skip first CLI arg (program name)
     if (i == 0) continue;
 
-    char *currentArg = argv[i];
+    const char *currentArg = argv[i];
     const u_int32_t argLen = strlen(currentArg);
 
     if (argLen == 0) continue;
@@ -238,33 +288,57 @@ void new_args_and_flags(int argc,
     if (isFlag) {
       argsAndFlags->flags[argsAndFlags->numFlags] = currentArg;
       argsAndFlags->numFlags += 1;
+
+      // check if it's a --spaces / -s flag
+      const char *spacesFlags[] = {"-s", "--spaces"};
+      if (array_includes_string(spacesFlags, 2, currentArg)) {
+        argsAndFlags->spacesFlagIndex = i;
+        // check if next cli arg after spaces is a value - if so skip over
+        // the next cli arg in the loop since it's the value for the --spaces flag
+        int nextCliArgIdx = i + 1;
+        if (nextCliArgIdx < argc && strncmp(argv[nextCliArgIdx], "-", 1) != 0) {
+          // skip what would be the next cli arg in the loop
+          i += 1;
+        }
+      }
     } else {
       argsAndFlags->args[argsAndFlags->numArgs] = currentArg;
       argsAndFlags->numArgs += 1;
     }
   }
-
   *outputArgsAndFlags = argsAndFlags;
 }
 
-jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config **output_config) {
+jsonfmt_error_t new_jsonfmt_config(int argc,
+                                   const char *argv[],
+                                   struct jsonfmt_config **output_config) {
 
   struct jsonfmt_config *config = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
   memset(config, 0, sizeof(struct jsonfmt_config));
 
-  // init config with defaults
-  config->useSpaces = true;
-  config->numSpaces = 2;
+  // init config
+  config->useSpaces = false;
+  config->numSpaces = 0;
   config->useTabs = false;
   config->writeToFile = false;
-  config->useLF = true;
+  config->useLF = false;
   config->useCRLF = false;
-  config->useStdIn = true;
+  config->useStdIn = false;
   config->paths = NULL;
   config->jsonFilePaths = NULL;
 
   if (argc <= 1) {
-    // no args provided use defaults
+    // no args provided set defaults
+    config->useSpaces = true;
+    config->numSpaces = 2;
+    config->useTabs = false;
+    config->writeToFile = false;
+    config->useLF = true;
+    config->useCRLF = false;
+    config->useStdIn = true;
+    config->paths = NULL;
+    config->jsonFilePaths = NULL;
+
     *output_config = config;
     return JSONFMT_OK;
   }
@@ -287,15 +361,57 @@ jsonfmt_error_t new_jsonfmt_config(int argc, char *argv[], struct jsonfmt_config
     return JSONFMT_ERR_REPEATED_OPTION;
   }
 
-  if (has_spaces_and_tabs_flag(argsAndFlags->flags, argsAndFlags->numFlags)) {
-    printf("has spaces & tabs flag \n");
+  const char *spacesFlags[] = {"-s", "--spaces"};
+  config->useSpaces = array_includes_any_target_strings(argsAndFlags->flags,
+                                                        argsAndFlags->numFlags,
+                                                        spacesFlags,
+                                                        2);
+
+  const char *tabsFlags[] = {"-t", "--tabs"};
+  config->useTabs = array_includes_any_target_strings(argsAndFlags->flags,
+                                                      argsAndFlags->numFlags,
+                                                      tabsFlags,
+                                                      2);
+
+  if (config->useSpaces && config->useTabs) {
+    printf("err - has spaces & tabs flag \n");
     return JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG;
   }
 
-  if (has_lf_and_crlf_flag(argsAndFlags->flags, argsAndFlags->numFlags)) {
-    printf("has lf & crlf flag \n");
+  const char *lfFlags[] = {"--lf"};
+  config->useLF = array_includes_any_target_strings(argsAndFlags->flags,
+                                                    argsAndFlags->numFlags,
+                                                    lfFlags,
+                                                    1);
+
+  const char *crlfFlags[] = {"--crlf"};
+  config->useCRLF = array_includes_any_target_strings(argsAndFlags->flags,
+                                                      argsAndFlags->numFlags,
+                                                      crlfFlags,
+                                                      1);
+
+  if (config->useLF && config->useCRLF) {
+    printf("err - has lf & crlf flag \n");
     return JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG;
   }
+
+  if (config->useSpaces) {
+    jsonfmt_error_t err = get_spaces_flag_value(argc,
+                                                argv,
+                                                argsAndFlags->spacesFlagIndex,
+                                                &config->numSpaces);
+    if (err != JSONFMT_OK) {
+      return err;
+    }
+
+    if (config->numSpaces > 10) {
+      printf("spaces value too high: %ld \n", config->numSpaces);
+      return JSONFMT_ERR_VALUE_TOO_HIGH;
+    }
+
+    printf("spaces set to %ld: \n", config->numSpaces);
+  }
+
 
   // print testing =============================================================
   printf("flags: \n");
