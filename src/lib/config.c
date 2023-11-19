@@ -311,10 +311,13 @@ void new_args_and_flags(int argc,
 
 jsonfmt_error_t new_jsonfmt_config(int argc,
                                    const char *argv[],
-                                   struct jsonfmt_config **output_config) {
+                                   struct jsonfmt_config **outConfig) {
 
-  struct jsonfmt_config *config = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
-  memset(config, 0, sizeof(struct jsonfmt_config));
+
+  *outConfig = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
+  memset(*outConfig, 0, sizeof(struct jsonfmt_config));
+
+  struct jsonfmt_config *config = *outConfig;
 
   // init config
   config->useSpaces = false;
@@ -338,8 +341,6 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
     config->useStdIn = true;
     config->paths = NULL;
     config->jsonFilePaths = NULL;
-
-    *output_config = config;
     return JSONFMT_OK;
   }
 
@@ -412,6 +413,21 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
     printf("spaces set to %ld: \n", config->numSpaces);
   }
 
+  const char *writeFlags[] = {"-w", "--write"};
+  config->writeToFile = array_includes_any_target_strings(argsAndFlags->flags,
+                                                          argsAndFlags->numFlags,
+                                                          writeFlags,
+                                                          2);
+
+  if (argsAndFlags->numArgs < 1) {
+    // no path provided - us stdin
+    config->useStdIn = true;
+    // TODO: handle checking if stdin has content & if we need to store it temporarily
+    return JSONFMT_OK;
+  }
+
+  // TODO check if args are paths or files
+
 
   // print testing =============================================================
   printf("flags: \n");
@@ -427,8 +443,7 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
   printf("spaced index: %d \n", argsAndFlags->spacesFlagIndex);
   //============================================================================
   free_args_and_flags(argsAndFlags);
-
-  return 1;
+  return JSONFMT_OK;
 }
 
 
