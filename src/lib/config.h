@@ -7,12 +7,15 @@
 struct jsonfmt_config {
   bool useSpaces;
   long int numSpaces;
+  int spacesFlagIndex;
   bool useTabs;
   bool writeToFile;
   bool useLF;
   bool useCRLF;
   bool useStdIn;
-  char **paths;
+  const char** flags;
+  int numFlags;
+  const char **paths;
   int numPaths;
   char **jsonFilePaths;
   int numJsonFilePaths;

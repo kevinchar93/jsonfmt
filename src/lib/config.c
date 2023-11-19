@@ -255,44 +255,33 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
   return JSONFMT_OK;
 };
 
-void free_args_and_flags(struct args_and_flags *argsAndFlags) {
-  saferFree(argsAndFlags->args);
-  saferFree(argsAndFlags->flags);
-  saferFree(argsAndFlags);
-}
-
-void new_args_and_flags(int argc,
-                        const char *argv[],
-                        struct args_and_flags **outputArgsAndFlags) {
-
-  // init memory for struct
-  struct args_and_flags *argsAndFlags = malloc(sizeof(struct args_and_flags));
-  memset(argsAndFlags, 0, sizeof(struct args_and_flags));
-
+void set_flags_and_paths(int argc,
+                         const char *argv[],
+                         struct jsonfmt_config *config) {
   // init memory for args & flags char pointer arrays - base size on argc
-  argsAndFlags->args = malloc(argc * sizeof(char *));
-  argsAndFlags->flags = malloc(argc * sizeof(char *));
+  config->paths = malloc(argc * sizeof(char *));
+  config->flags = malloc(argc * sizeof(char *));
 
   for (int i = 0; i < argc; i++) {
     // skip first CLI arg (program name)
     if (i == 0) continue;
 
-    const char *currentArg = argv[i];
-    const u_int32_t argLen = strlen(currentArg);
+    const char *currentCliArg = argv[i];
+    const u_int32_t argLen = strlen(currentCliArg);
 
     if (argLen == 0) continue;
 
     // must begin with '-' & be at least 2 chars long
-    bool isFlag = strncmp(currentArg, "-", 1) == 0 && argLen >= 2;
+    bool isFlag = strncmp(currentCliArg, "-", 1) == 0 && argLen >= 2;
 
     if (isFlag) {
-      argsAndFlags->flags[argsAndFlags->numFlags] = currentArg;
-      argsAndFlags->numFlags += 1;
+      config->flags[config->numFlags] = currentCliArg;
+      config->numFlags += 1;
 
       // check if it's a --spaces / -s flag
       const char *spacesFlags[] = {"-s", "--spaces"};
-      if (array_includes_string(spacesFlags, 2, currentArg)) {
-        argsAndFlags->spacesFlagIndex = i;
+      if (array_includes_string(spacesFlags, 2, currentCliArg)) {
+        config->spacesFlagIndex = i;
         // check if next cli arg after spaces is a value - if so skip over
         // the next cli arg in the loop since it's the value for the --spaces flag
         int nextCliArgIdx = i + 1;
@@ -302,11 +291,27 @@ void new_args_and_flags(int argc,
         }
       }
     } else {
-      argsAndFlags->args[argsAndFlags->numArgs] = currentArg;
-      argsAndFlags->numArgs += 1;
+      config->paths[config->numPaths] = currentCliArg;
+      config->numPaths += 1;
     }
   }
-  *outputArgsAndFlags = argsAndFlags;
+}
+
+void init_config(struct jsonfmt_config* config) {
+  config->useSpaces = false;
+  config->numSpaces = 0;
+  config->spacesFlagIndex = -1;
+  config->useTabs = false;
+  config->writeToFile = false;
+  config->useLF = false;
+  config->useCRLF = false;
+  config->useStdIn = false;
+  config->flags = NULL;
+  config->numFlags = 0;
+  config->paths = NULL;
+  config->numPaths = 0;
+  config->jsonFilePaths = NULL;
+  config->numJsonFilePaths = 0;
 }
 
 jsonfmt_error_t new_jsonfmt_config(int argc,
@@ -319,58 +324,42 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 
   struct jsonfmt_config *config = *outConfig;
 
-  // init config
-  config->useSpaces = false;
-  config->numSpaces = 0;
-  config->useTabs = false;
-  config->writeToFile = false;
-  config->useLF = false;
-  config->useCRLF = false;
-  config->useStdIn = false;
-  config->paths = NULL;
-  config->jsonFilePaths = NULL;
+  init_config(config);
 
   if (argc <= 1) {
     // no args provided set defaults
     config->useSpaces = true;
     config->numSpaces = 2;
-    config->useTabs = false;
-    config->writeToFile = false;
     config->useLF = true;
-    config->useCRLF = false;
     config->useStdIn = true;
-    config->paths = NULL;
-    config->jsonFilePaths = NULL;
     return JSONFMT_OK;
   }
 
-  struct args_and_flags *argsAndFlags = NULL;
-
-  new_args_and_flags(argc, argv, &argsAndFlags);
+  set_flags_and_paths(argc, argv, config);
 
   const char *unknownFlag = NULL;
 
-  if (has_unknown_flags(argsAndFlags->flags, argsAndFlags->numFlags, &unknownFlag)) {
+  if (has_unknown_flags(config->flags, config->numFlags, &unknownFlag)) {
     printf("found unknown flag: %s \n", unknownFlag);
     return JSONFMT_ERR_UNRECOGNISED_OPTION;
   }
 
   const char *doubledFlag = NULL;
 
-  if (has_doubled_flag(argsAndFlags->flags, argsAndFlags->numFlags, &doubledFlag)) {
+  if (has_doubled_flag(config->flags, config->numFlags, &doubledFlag)) {
     printf("found repeated flag: %s \n", doubledFlag);
     return JSONFMT_ERR_REPEATED_OPTION;
   }
 
   const char *spacesFlags[] = {"-s", "--spaces"};
-  config->useSpaces = array_includes_any_target_strings(argsAndFlags->flags,
-                                                        argsAndFlags->numFlags,
+  config->useSpaces = array_includes_any_target_strings(config->flags,
+                                                        config->numFlags,
                                                         spacesFlags,
                                                         2);
 
   const char *tabsFlags[] = {"-t", "--tabs"};
-  config->useTabs = array_includes_any_target_strings(argsAndFlags->flags,
-                                                      argsAndFlags->numFlags,
+  config->useTabs = array_includes_any_target_strings(config->flags,
+                                                      config->numFlags,
                                                       tabsFlags,
                                                       2);
 
@@ -380,14 +369,14 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
   }
 
   const char *lfFlags[] = {"--lf"};
-  config->useLF = array_includes_any_target_strings(argsAndFlags->flags,
-                                                    argsAndFlags->numFlags,
+  config->useLF = array_includes_any_target_strings(config->flags,
+                                                    config->numFlags,
                                                     lfFlags,
                                                     1);
 
   const char *crlfFlags[] = {"--crlf"};
-  config->useCRLF = array_includes_any_target_strings(argsAndFlags->flags,
-                                                      argsAndFlags->numFlags,
+  config->useCRLF = array_includes_any_target_strings(config->flags,
+                                                      config->numFlags,
                                                       crlfFlags,
                                                       1);
 
@@ -399,7 +388,7 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
   if (config->useSpaces) {
     jsonfmt_error_t err = get_spaces_flag_value(argc,
                                                 argv,
-                                                argsAndFlags->spacesFlagIndex,
+                                                config->spacesFlagIndex,
                                                 &config->numSpaces);
     if (err != JSONFMT_OK) {
       return err;
@@ -414,13 +403,13 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
   }
 
   const char *writeFlags[] = {"-w", "--write"};
-  config->writeToFile = array_includes_any_target_strings(argsAndFlags->flags,
-                                                          argsAndFlags->numFlags,
+  config->writeToFile = array_includes_any_target_strings(config->flags,
+                                                          config->numFlags,
                                                           writeFlags,
                                                           2);
 
-  if (argsAndFlags->numArgs < 1) {
-    // no args mean no path supplied, we should us stdin
+  if (config->numPaths < 1) {
+    // no paths supplied, we should us stdin
     config->useStdIn = true;
   }
 
@@ -429,23 +418,24 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 
   // print testing =============================================================
   printf("flags: \n");
-  for (int i = 0; i < argsAndFlags->numFlags; i++) {
-    printf(" %s \n", argsAndFlags->flags[i]);
+  for (int i = 0; i < config->numFlags; i++) {
+    printf(" %s \n", config->flags[i]);
   }
 
   printf("args: \n");
-  for (int i = 0; i < argsAndFlags->numArgs; i++) {
-    printf(" %s \n", argsAndFlags->args[i]);
+  for (int i = 0; i < config->numPaths; i++) {
+    printf(" %s \n", config->paths[i]);
   }
 
-  printf("spaced index: %d \n", argsAndFlags->spacesFlagIndex);
+  printf("spaced index: %d \n", config->spacesFlagIndex);
   //============================================================================
-  free_args_and_flags(argsAndFlags);
   return JSONFMT_OK;
 }
 
 
 jsonfmt_error_t free_jsonfmt_config(struct jsonfmt_config *config) {
+  saferFree(config->paths);
+  saferFree(config->flags);
   saferFree(config);
   return JSONFMT_OK;
 }
