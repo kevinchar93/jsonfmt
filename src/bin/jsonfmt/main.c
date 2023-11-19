@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "config.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
 //  printf("Hello, World!\n");
 //
 //  int i;

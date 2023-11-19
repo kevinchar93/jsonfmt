@@ -8,11 +8,13 @@ const char *const jsfmt_error_strings[] =
         "can't use --write(-w) with no set 'path.'",
         "can't read file(s) at given path, permission denied:",
         "can't write file(s) at given path, permission denied:",
-        "unrecognised option(s):",
-        "incorrect argument type:",
+        "unrecognised option:",
+        "incorrect type for arg:",
         "paths does not exist:",
         "no .json files found in input path(s):",
-        "option appears more than once:",
+        "option appears more than once: %",
+        "no value provided for option: %s",
+        "value provided for arg ('%s') is too high:",
     };
 
 
