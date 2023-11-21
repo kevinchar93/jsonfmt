@@ -5,6 +5,92 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/stat.h>
+
+#define HELLO_WORLD_C "#include <stdio.h>\n\nint main() {\nprintf(\"Hello, World!\\n\");\nreturn 0;\n}"
+#define HELLO_WORLD_JS "console.log(\"hello, world\");"
+#define HELLO_WORLD_JSON "{\"hello\":\"world\"}"
+
+TestSuite(new_jsonfmt_config);
+
+void setupTestDirAndFiles(void) {
+  /**
+   File structure
+   ==============================
+   - test-file-1.c
+   - test-file-2.js
+   - test-file-3.json
+   - dir1
+     - test-files-4.js
+     - test-files-5.json
+     - dir2
+        - test-file-6.json
+        - dir3
+          - test-file-7.json
+          - test-file-8.ts
+   ==============================
+  */
+
+  mkdir("./dir1", 0755);
+  mkdir("./dir1/dir2", 0755);
+  mkdir("./dir1/dir2/dir3", 0755);
+
+  FILE *fp = fopen("./test-file-1.c", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_C, fp);
+  fclose(fp);
+
+  fp = fopen("./test-file-2.js", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JS, fp);
+  fclose(fp);
+
+  fp = fopen("./test-file-3.json", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JSON, fp);
+  fclose(fp);
+
+
+  fp = fopen("./dir1/test-file-4.js", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JS, fp);
+  fclose(fp);
+
+  fp = fopen("./dir1/test-file-5.json", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JSON, fp);
+  fclose(fp);
+
+  fp = fopen("./dir1/dir2/test-file-6.json", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JSON, fp);
+  fclose(fp);
+
+  fp = fopen("./dir1/dir2/dir3/test-file-7.json", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JSON, fp);
+  fclose(fp);
+
+  fp = fopen("./dir1/dir2/dir3/test-file-8.ts", "w+");
+  cr_assert_not_null(fp);
+  fputs(HELLO_WORLD_JS, fp);
+  fclose(fp);
+}
+
+void teardownTestDirAndFiles(void) {
+  remove("./test-file-1.c");
+  remove("./test-file-2.js");
+  remove("./test-file-3.json");
+  remove("./dir1/test-file-4.js");
+  remove("./dir1/test-file-5.json");
+  remove("./dir1/dir2/test-file-6.json");
+  remove("./dir1/dir2/dir3/test-file-7.json");
+  remove("./dir1/dir2/dir3/test-file-8.ts");
+
+  rmdir("./dir1/dir2/dir3");
+  rmdir("./dir1/dir2");
+  rmdir("./dir1");
+}
 
 
 Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
