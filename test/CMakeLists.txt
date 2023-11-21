@@ -4,7 +4,8 @@ enable_testing()
 
 set(TEST_SOURCE_FILES
         config_test.c
-        error_test.c)
+        error_test.c
+        criterion_hooks.c)
 
 add_executable(test-jsonfmt ${TEST_SOURCE_FILES})
 
