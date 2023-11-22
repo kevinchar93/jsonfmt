@@ -325,54 +325,6 @@ bool has_doubled_flag(const char *cliFlags[],
   return false;
 }
 
-bool has_spaces_and_tabs_flag(const char *cliFlags[], int cliFlagsLen) {
-  enum {
-    flagsSize = 2
-  };
-  const char *spacesFlags[flagsSize] = {"-s", "--spaces"};
-  const char *tabsFlags[flagsSize] = {"-t", "--tabs"};
-
-  bool hasSpacesFlag = array_includes_any_target_strings(cliFlags,
-                                                         cliFlagsLen,
-                                                         spacesFlags,
-                                                         flagsSize);
-
-  bool hasTabsFlag = array_includes_any_target_strings(cliFlags,
-                                                       cliFlagsLen,
-                                                       tabsFlags,
-                                                       flagsSize);
-  if (hasSpacesFlag && hasTabsFlag) {
-    return true;
-  }
-
-  return false;
-}
-
-bool has_lf_and_crlf_flag(const char *cliFlags[], int cliFlagsLen) {
-  enum {
-    flagsSize = 1
-  };
-  const char *lfFlags[flagsSize] = {"--lf"};
-  const char *crlfFlags[flagsSize] = {"--crlf"};
-
-
-  bool hasLfFlag = array_includes_any_target_strings(cliFlags,
-                                                     cliFlagsLen,
-                                                     lfFlags,
-                                                     flagsSize);
-
-  bool hasCrlfFlag = array_includes_any_target_strings(cliFlags,
-                                                       cliFlagsLen,
-                                                       crlfFlags,
-                                                       flagsSize);
-
-  if (hasLfFlag && hasCrlfFlag) {
-    return true;
-  }
-
-  return false;
-}
-
 jsonfmt_error_t get_spaces_flag_value(int argc,
                                       const char *argv[],
                                       struct jsonfmt_config *config) {
