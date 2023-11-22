@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-void saferFree(void *ptr);
+void safeFree(void *ptr);
 
 bool array_includes_any_target_strings(const char *array[],
                                        int arrayLen,
@@ -25,10 +25,10 @@ bool has_unknown_flags(const char *flags[],
                        int numFlags,
                        const char **unknownFlag);
 
-bool count_occurences_of_y_in_x(const char *y[],
-                                int yLen,
-                                const char *x[],
-                                int xLen);
+bool count_occurrences_of_y_in_x(const char *z[],
+                                 int zLen,
+                                 const char *x[],
+                                 int xLen);
 
 bool has_doubled_flag(const char *cliFlags[],
                       int cliFlagsLen,
@@ -44,11 +44,14 @@ void set_flags_and_paths(int argc,
 
 void init_config(struct jsonfmt_config *config);
 
+jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config);
+
+// -----------------------------------------------------------------------------
+// module functions
 
 jsonfmt_error_t new_jsonfmt_config(int argc,
                                    const char *argv[],
                                    struct jsonfmt_config **outConfig) {
-
 
   *outConfig = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
   memset(*outConfig, 0, sizeof(struct jsonfmt_config));
@@ -107,9 +110,8 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                       config->flagsLen,
                                                       crlfFlags,
                                                       1);
-
   if (config->useLF && config->useCRLF) {
-    return JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG;
+    return JSONFMT_ERR_CANNOT_USE_FLAG_SET_AT_SAME_TIME;
   }
 
   if (config->useSpaces) {
@@ -120,7 +122,7 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
     }
 
     if (config->numSpaces > 10) {
-      return JSONFMT_ERR_VALUE_TOO_HIGH;
+      return JSONFMT_ERR_VALUE_OUT_OF_RANGE;
     }
   }
 
@@ -138,38 +140,22 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
     return JSONFMT_OK;
   }
 
-  // TODO: check for paths that can't be resolved
-
-  // TODO check if args are paths or files
-
-
-  // print testing =============================================================
-  //  printf("flags: \n");
-  //  for (int i = 0; i < config->numFlags; i++) {
-  //    printf(" %s \n", config->flags[i]);
-  //  }
-  //
-  //  printf("args: \n");
-  //  for (int i = 0; i < config->numPaths; i++) {
-  //    printf(" %s \n", config->paths[i]);
-  //  }
-  //
-  //  printf("spaced index: %d \n", config->spacesFlagIndex);
-  //============================================================================
-  return JSONFMT_OK;
+  return create_json_files_array(config);
 }
 
 
 jsonfmt_error_t free_jsonfmt_config(struct jsonfmt_config *config) {
-  saferFree(config->paths);
-  saferFree(config->flags);
-  saferFree(config);
+  safeFree(config->errorString);
+  safeFree(config->paths);
+  safeFree(config->flags);
+  safeFree(config);
   return JSONFMT_OK;
 }
 
-// =============================================================================
+// -----------------------------------------------------------------------------
+// internal functions
 
-void saferFree(void *ptr) {
+void safeFree(void *ptr) {
   if (ptr != NULL) {
     free(ptr);
   }
@@ -269,16 +255,16 @@ bool has_unknown_flags(const char *flags[],
   return false;
 }
 
-bool count_occurences_of_y_in_x(const char *y[],
-                                int yLen,
-                                const char *x[],
-                                int xLen) {
+bool count_occurrences_of_x_in_y(const char *x[],
+                                 int xLen,
+                                 const char *y[],
+                                 int yLen) {
   int count = 0;
-  // go over all strings in x
-  for (int i = 0; i < xLen; ++i) {
-    const char *xString = x[i];
-    if (array_includes_string(y, yLen, xString)) {
-      // count each time y includes a current x string
+  // go over all strings in y
+  for (int i = 0; i < yLen; ++i) {
+    const char *xString = y[i];
+    if (array_includes_string(x, xLen, xString)) {
+      // count each time x includes a current y string
       count++;
     }
   }
@@ -332,7 +318,6 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
   int spacesValueIndex = config->spacesFlagIndex + 1;
 
   if (spacesValueIndex >= argc) {
-//    printf("no value provided for spaces flag\n");
     return JSONFMT_ERR_NO_VALUE_PROVIDED;
   }
 
@@ -344,26 +329,22 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
   value = strtol(spacesValueStr, &endPtr, 10);
 
   if (errno == ERANGE && (value == LONG_MAX || value == LONG_MIN)) {
-//    printf("parsed value falls out of range\n");
     // error - parsed value falls out of range
     return JSONFMT_ERR_INCORRECT_ARG_TYPE;
   }
 
   if (errno != 0 && value == 0) {
     // an error happened & the value could not be parsed
-//    printf("parsed value has incorrect type\n");
     return JSONFMT_ERR_INCORRECT_ARG_TYPE;
   }
 
   if (*endPtr != '\0') {
     // error - number has string on end of it eg "345fd"
-//    printf("parsed value has incorrect type - string attached to number value\n");
     return JSONFMT_ERR_INCORRECT_ARG_TYPE;
   }
 
   if (endPtr == spacesValueStr) {
     // error - no digits found in the string "spacesValueStr"
-//    printf("parsed value has incorrect type - no digits found\n");
     return JSONFMT_ERR_INCORRECT_ARG_TYPE;
   }
 
