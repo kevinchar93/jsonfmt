@@ -51,9 +51,13 @@ jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config);
 
 // region module functions ------------------------------------------------------------
 
-jsonfmt_error_t new_jsonfmt_config(int argc,
-                                   const char *argv[],
+jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
+                                   const char *argvOrigin[],
                                    struct jsonfmt_config **outConfig) {
+
+  // slice argv to remove program name - we don't use it
+  int argc = argcOrigin - 1;
+  const char **argv = argcOrigin > 1 ? argvOrigin+1 : NULL;
 
   *outConfig = calloc(1, sizeof(struct jsonfmt_config));
 
@@ -61,16 +65,12 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 
   init_config(config);
 
-  if (argc <= 1) {
-    // no args provided set defaults
-    config->useSpaces = true;
-    config->numSpaces = 2;
-    config->useLF = true;
-    config->useStdIn = true;
-    return JSONFMT_OK;
-  }
-
   set_flags_and_paths(argc, argv, config);
+
+  // use stdin for input if no path given by the user
+  if (config->pathsLen == 0) {
+    config->useStdIn = true;
+  }
 
   const char *unknownFlag = NULL;
 
@@ -89,15 +89,26 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                         config->flagsLen,
                                                         spacesFlags,
                                                         2);
+  // we got a user provided spaces option - validate it
+  if (config->useSpaces) {
+    jsonfmt_error_t err = get_spaces_flag_value(argc, argv, config);
+
+    if (err != JSONFMT_OK) {
+      return err;
+    }
+    if (config->numSpaces > 10) {
+      return JSONFMT_ERR_VALUE_OUT_OF_RANGE;
+    }
+  }
 
   const char *tabsFlags[] = {"-t", "--tabs"};
   config->useTabs = array_includes_any_target_strings(config->flags,
                                                       config->flagsLen,
                                                       tabsFlags,
                                                       2);
-
+  // check user hasn't set tabs & spaces options
   if (config->useSpaces && config->useTabs) {
-    jsonfmt_error_t err = JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
+    return JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
 //    const char *formatStr = get_jsonfmt_error_string(err);
 //
 //    const char *valueStr = "--spaces(-s) & --tabs(-t) ";
@@ -105,7 +116,12 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 //    config->errorString = calloc(config->errorStringLen, sizeof(char));
 //
 //    snprintf(config->errorString, config->errorStringLen, formatStr, pathWithError);
-    return err;
+  }
+
+  // add default spaces settings if neither spaces/tabs is set by the user
+  if (!config->useSpaces && !config->useTabs) {
+    config->useSpaces = true;
+    config->numSpaces = 2;
   }
 
   const char *lfFlags[] = {"--lf"};
@@ -119,20 +135,14 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                       config->flagsLen,
                                                       crlfFlags,
                                                       1);
+  // check user hasn't set lf & crlf options
   if (config->useLF && config->useCRLF) {
     return JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
   }
 
-  if (config->useSpaces) {
-    jsonfmt_error_t err = get_spaces_flag_value(argc, argv, config);
-
-    if (err != JSONFMT_OK) {
-      return err;
-    }
-
-    if (config->numSpaces > 10) {
-      return JSONFMT_ERR_VALUE_OUT_OF_RANGE;
-    }
+  // add default line settings if neither lf/crlf is set by the user
+  if (!config->useLF && !config->useCRLF) {
+    config->useLF = true;
   }
 
   const char *writeFlags[] = {"-w", "--write"};
@@ -140,13 +150,9 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                           config->flagsLen,
                                                           writeFlags,
                                                           2);
+  // check user hasn't set write flag with no paths to write output to
   if (config->writeToFile && config->pathsLen < 1) {
     return JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED;
-  }
-
-  if (config->pathsLen < 1) {
-    config->useStdIn = true;
-    return JSONFMT_OK;
   }
 
   return JSONFMT_OK;
@@ -176,6 +182,14 @@ bool array_includes_any_target_strings(const char *array[],
                                        int arrayLen,
                                        const char *targetStrings[],
                                        int targetStringsLen) {
+
+  if (arrayLen == 0 ||
+      targetStringsLen == 0 ||
+      array == NULL ||
+      targetStrings == NULL) {
+    return false;
+  }
+
   for (int i = 0; i < arrayLen; ++i) {
     const char *currentArrayString = array[i];
 
@@ -198,6 +212,12 @@ bool array_includes_any_target_strings(const char *array[],
 bool array_includes_string(const char *array[],
                            int arrayLen,
                            const char *targetString) {
+  if (arrayLen == 0 ||
+      array == NULL ||
+      targetString == NULL) {
+    return false;
+  }
+
   const char *targetStrings[1] = {targetString};
   return array_includes_any_target_strings(array, arrayLen, targetStrings, 1);
 }
@@ -206,6 +226,12 @@ bool array_includes_all_target_strings(const char *array[],
                                        int arrayLen,
                                        const char *targetStrings[],
                                        int targetStringsLen) {
+  if (arrayLen == 0 ||
+      targetStringsLen == 0 ||
+      array == NULL ||
+      targetStrings == NULL) {
+    return false;
+  }
 
   // init matchedIndexes array with zeros - on each match set that index to 1 we've
   // matched all targets strings if the matchedIndexes elements add up to targetStringsLen
@@ -243,7 +269,11 @@ bool array_includes_all_target_strings(const char *array[],
 bool has_unknown_flags(const char *flags[],
                        int numFlags,
                        const char **unknownFlag) {
-#define numKnownFlags 9
+  if (numFlags == 0 || flags == NULL) return false;
+
+  enum {
+    numKnownFlags = 9
+  };
   const char *knownFlags[numKnownFlags] = {
       "--spaces",
       "-s",
@@ -286,7 +316,11 @@ bool count_occurrences_of_x_in_y(const char *x[],
 bool has_doubled_flag(const char *cliFlags[],
                       int cliFlagsLen,
                       const char **doubledFlag) {
-#define flagsFieldSize 2
+  if (cliFlagsLen == 0 || cliFlags == NULL) return false;
+
+  enum {
+    flagsFieldSize = 2
+  };
   struct supported_flag_tuple {
     int count;
     const char *flags[flagsFieldSize];
@@ -324,7 +358,7 @@ bool has_doubled_flag(const char *cliFlags[],
 jsonfmt_error_t get_spaces_flag_value(int argc,
                                       const char *argv[],
                                       struct jsonfmt_config *config) {
-
+  if (argc == 0 || argv == NULL) return JSONFMT_OK;
 
   int spacesValueIndex = config->spacesFlagIndex + 1;
 
@@ -366,12 +400,13 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
 void set_flags_and_paths(int argc,
                          const char *argv[],
                          struct jsonfmt_config *config) {
-  // init memory for args & flags char pointer arrays - base size on argc
-  config->paths = calloc(argc, sizeof(char*));
-  config->flags = calloc(argc, sizeof(char*));
+  if (argc == 0 || argv == NULL) return;
 
-  //  start i @ 1 to skip 1st CLI arg (program name)
-  for (int i = 1; i < argc; i++) {
+  // init memory for args & flags char pointer arrays - base size on argc
+  config->paths = calloc(argc, sizeof(char *));
+  config->flags = calloc(argc, sizeof(char *));
+
+  for (int i = 0; i < argc; i++) {
     const char *currentCliArg = argv[i];
     const u_int32_t argLen = strlen(currentCliArg);
 
@@ -403,21 +438,27 @@ void set_flags_and_paths(int argc,
 }
 
 void init_config(struct jsonfmt_config *config) {
-  config->useSpaces = false;
   config->numSpaces = 0;
   config->spacesFlagIndex = -1;
+
+  config->useSpaces = false;
   config->useTabs = false;
   config->writeToFile = false;
   config->useLF = false;
   config->useCRLF = false;
   config->useStdIn = false;
+
   config->flags = NULL;
   config->flagsLen = 0;
+
   config->paths = NULL;
   config->pathsLen = 0;
+
   config->jsonFiles = NULL;
   config->jsonFilesLen = 0;
+
   config->errorString = NULL;
+  config->errorStringLen = 0;
 }
 // endregion
 
