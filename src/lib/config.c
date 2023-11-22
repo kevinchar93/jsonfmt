@@ -45,6 +45,131 @@ void set_flags_and_paths(int argc,
 void init_config(struct jsonfmt_config *config);
 
 
+jsonfmt_error_t new_jsonfmt_config(int argc,
+                                   const char *argv[],
+                                   struct jsonfmt_config **outConfig) {
+
+
+  *outConfig = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
+  memset(*outConfig, 0, sizeof(struct jsonfmt_config));
+
+  struct jsonfmt_config *config = *outConfig;
+
+  init_config(config);
+
+  if (argc <= 1) {
+    // no args provided set defaults
+    config->useSpaces = true;
+    config->numSpaces = 2;
+    config->useLF = true;
+    config->useStdIn = true;
+    return JSONFMT_OK;
+  }
+
+  set_flags_and_paths(argc, argv, config);
+
+  const char *unknownFlag = NULL;
+
+  if (has_unknown_flags(config->flags, config->numFlags, &unknownFlag)) {
+    return JSONFMT_ERR_UNRECOGNISED_OPTION;
+  }
+
+  const char *doubledFlag = NULL;
+
+  if (has_doubled_flag(config->flags, config->numFlags, &doubledFlag)) {
+    return JSONFMT_ERR_REPEATED_OPTION;
+  }
+
+  const char *spacesFlags[] = {"-s", "--spaces"};
+  config->useSpaces = array_includes_any_target_strings(config->flags,
+                                                        config->numFlags,
+                                                        spacesFlags,
+                                                        2);
+
+  const char *tabsFlags[] = {"-t", "--tabs"};
+  config->useTabs = array_includes_any_target_strings(config->flags,
+                                                      config->numFlags,
+                                                      tabsFlags,
+                                                      2);
+
+  if (config->useSpaces && config->useTabs) {
+    return JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG;
+  }
+
+  const char *lfFlags[] = {"--lf"};
+  config->useLF = array_includes_any_target_strings(config->flags,
+                                                    config->numFlags,
+                                                    lfFlags,
+                                                    1);
+
+  const char *crlfFlags[] = {"--crlf"};
+  config->useCRLF = array_includes_any_target_strings(config->flags,
+                                                      config->numFlags,
+                                                      crlfFlags,
+                                                      1);
+
+  if (config->useLF && config->useCRLF) {
+    return JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG;
+  }
+
+  if (config->useSpaces) {
+    jsonfmt_error_t err = get_spaces_flag_value(argc, argv, config);
+
+    if (err != JSONFMT_OK) {
+      return err;
+    }
+
+    if (config->numSpaces > 10) {
+      return JSONFMT_ERR_VALUE_TOO_HIGH;
+    }
+  }
+
+  const char *writeFlags[] = {"-w", "--write"};
+  config->writeToFile = array_includes_any_target_strings(config->flags,
+                                                          config->numFlags,
+                                                          writeFlags,
+                                                          2);
+
+  if (config->writeToFile && config->numPaths < 1) {
+    return JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED;
+  }
+
+  if (config->numPaths < 1) {
+    config->useStdIn = true;
+    return JSONFMT_OK;
+  }
+
+  // TODO: check for paths that can't be resolved
+
+  // TODO check if args are paths or files
+
+
+  // print testing =============================================================
+  //  printf("flags: \n");
+  //  for (int i = 0; i < config->numFlags; i++) {
+  //    printf(" %s \n", config->flags[i]);
+  //  }
+  //
+  //  printf("args: \n");
+  //  for (int i = 0; i < config->numPaths; i++) {
+  //    printf(" %s \n", config->paths[i]);
+  //  }
+  //
+  //  printf("spaced index: %d \n", config->spacesFlagIndex);
+  //============================================================================
+  return JSONFMT_OK;
+}
+
+
+jsonfmt_error_t free_jsonfmt_config(struct jsonfmt_config *config) {
+  saferFree(config->paths);
+  saferFree(config->flags);
+  saferFree(config);
+  return JSONFMT_OK;
+}
+
+// =============================================================================
+
 void saferFree(void *ptr) {
   if (ptr != NULL) {
     free(ptr);
@@ -352,131 +477,4 @@ void init_config(struct jsonfmt_config *config) {
   config->numPaths = 0;
   config->jsonFiles = NULL;
   config->numJsonFiles = 0;
-}
-
-jsonfmt_error_t new_jsonfmt_config(int argc,
-                                   const char *argv[],
-                                   struct jsonfmt_config **outConfig) {
-
-
-  *outConfig = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
-  memset(*outConfig, 0, sizeof(struct jsonfmt_config));
-
-  struct jsonfmt_config *config = *outConfig;
-
-  init_config(config);
-
-  if (argc <= 1) {
-    // no args provided set defaults
-    config->useSpaces = true;
-    config->numSpaces = 2;
-    config->useLF = true;
-    config->useStdIn = true;
-    return JSONFMT_OK;
-  }
-
-  set_flags_and_paths(argc, argv, config);
-
-  const char *unknownFlag = NULL;
-
-  if (has_unknown_flags(config->flags, config->numFlags, &unknownFlag)) {
-//    printf("found unknown flag: %s \n", unknownFlag);
-    return JSONFMT_ERR_UNRECOGNISED_OPTION;
-  }
-
-  const char *doubledFlag = NULL;
-
-  if (has_doubled_flag(config->flags, config->numFlags, &doubledFlag)) {
-//    printf("found repeated flag: %s \n", doubledFlag);
-    return JSONFMT_ERR_REPEATED_OPTION;
-  }
-
-  const char *spacesFlags[] = {"-s", "--spaces"};
-  config->useSpaces = array_includes_any_target_strings(config->flags,
-                                                        config->numFlags,
-                                                        spacesFlags,
-                                                        2);
-
-  const char *tabsFlags[] = {"-t", "--tabs"};
-  config->useTabs = array_includes_any_target_strings(config->flags,
-                                                      config->numFlags,
-                                                      tabsFlags,
-                                                      2);
-
-  if (config->useSpaces && config->useTabs) {
-//    printf("err - has spaces & tabs flag \n");
-    return JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG;
-  }
-
-  const char *lfFlags[] = {"--lf"};
-  config->useLF = array_includes_any_target_strings(config->flags,
-                                                    config->numFlags,
-                                                    lfFlags,
-                                                    1);
-
-  const char *crlfFlags[] = {"--crlf"};
-  config->useCRLF = array_includes_any_target_strings(config->flags,
-                                                      config->numFlags,
-                                                      crlfFlags,
-                                                      1);
-
-  if (config->useLF && config->useCRLF) {
-    return JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG;
-  }
-
-  if (config->useSpaces) {
-    jsonfmt_error_t err = get_spaces_flag_value(argc,
-                                                argv,
-                                                config);
-    if (err != JSONFMT_OK) {
-      return err;
-    }
-
-    if (config->numSpaces > 10) {
-      return JSONFMT_ERR_VALUE_TOO_HIGH;
-    }
-  }
-
-  const char *writeFlags[] = {"-w", "--write"};
-  config->writeToFile = array_includes_any_target_strings(config->flags,
-                                                          config->numFlags,
-                                                          writeFlags,
-                                                          2);
-
-  if (config->writeToFile && config->numPaths < 1) {
-    return JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED;
-  }
-
-  if (config->numPaths < 1) {
-    config->useStdIn = true;
-    return JSONFMT_OK;
-  }
-
-  // TODO: check for paths that can't be resolved
-
-  // TODO check if args are paths or files
-
-
-  // print testing =============================================================
-//  printf("flags: \n");
-//  for (int i = 0; i < config->numFlags; i++) {
-//    printf(" %s \n", config->flags[i]);
-//  }
-//
-//  printf("args: \n");
-//  for (int i = 0; i < config->numPaths; i++) {
-//    printf(" %s \n", config->paths[i]);
-//  }
-//
-//  printf("spaced index: %d \n", config->spacesFlagIndex);
-  //============================================================================
-  return JSONFMT_OK;
-}
-
-
-jsonfmt_error_t free_jsonfmt_config(struct jsonfmt_config *config) {
-  saferFree(config->paths);
-  saferFree(config->flags);
-  saferFree(config);
-  return JSONFMT_OK;
 }
