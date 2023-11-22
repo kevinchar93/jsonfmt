@@ -1,36 +1,20 @@
 #include "config.h"
+#include "array.h"
+
 #include <string.h>
-#include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <limits.h>
 
-// region module functions ------------------------------------------------------------
+// region declarations ------------------------------------------------------------
 
 void safeFree(void *ptr);
 
-bool array_includes_any_target_strings(const char *array[],
-                                       int arrayLen,
-                                       const char *targetStrings[],
-                                       int targetStringsLen);
-
-bool array_includes_string(const char *array[],
-                           int arrayLen,
-                           const char *targetString);
-
-bool array_includes_all_target_strings(const char *array[],
-                                       int arrayLen,
-                                       const char *targetStrings[],
-                                       int targetStringsLen);
 
 bool has_unknown_flags(const char *flags[],
                        int numFlags,
                        const char **unknownFlag);
 
-bool count_occurrences_of_y_in_x(const char *z[],
-                                 int zLen,
-                                 const char *x[],
-                                 int xLen);
 
 bool has_doubled_flag(const char *cliFlags[],
                       int cliFlagsLen,
@@ -57,7 +41,7 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
 
   // slice argv to remove program name - we don't use it
   int argc = argcOrigin - 1;
-  const char **argv = argcOrigin > 1 ? argvOrigin+1 : NULL;
+  const char **argv = argcOrigin > 1 ? argvOrigin + 1 : NULL;
 
   *outConfig = calloc(1, sizeof(struct jsonfmt_config));
 
@@ -129,7 +113,6 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
                                                     config->flagsLen,
                                                     lfFlags,
                                                     1);
-
   const char *crlfFlags[] = {"--crlf"};
   config->useCRLF = array_includes_any_target_strings(config->flags,
                                                       config->flagsLen,
@@ -182,6 +165,7 @@ void safeFree(void *ptr) {
 //void new_error_format_string(struct jsonfmt_config *config, const char *formatString, ...) {
 //
 //}
+
 
 //jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config) {
 //
@@ -244,93 +228,6 @@ void safeFree(void *ptr) {
 //  }
 //}
 
-bool array_includes_any_target_strings(const char *array[],
-                                       int arrayLen,
-                                       const char *targetStrings[],
-                                       int targetStringsLen) {
-
-  if (arrayLen == 0 ||
-      targetStringsLen == 0 ||
-      array == NULL ||
-      targetStrings == NULL) {
-    return false;
-  }
-
-  for (int i = 0; i < arrayLen; ++i) {
-    const char *currentArrayString = array[i];
-
-    for (int j = 0; j < targetStringsLen; ++j) {
-      const char *currentTargetString = targetStrings[j];
-
-      const u_int32_t currentStringLen = strlen(currentArrayString);
-      const u_int32_t currentTargetStringLen = strlen(currentTargetString);
-      const u_int32_t longestLen =
-          currentStringLen > currentTargetStringLen ? currentStringLen : currentTargetStringLen;
-
-      if (strncmp(currentArrayString, currentTargetString, longestLen) == 0) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-bool array_includes_string(const char *array[],
-                           int arrayLen,
-                           const char *targetString) {
-  if (arrayLen == 0 ||
-      array == NULL ||
-      targetString == NULL) {
-    return false;
-  }
-
-  const char *targetStrings[1] = {targetString};
-  return array_includes_any_target_strings(array, arrayLen, targetStrings, 1);
-}
-
-bool array_includes_all_target_strings(const char *array[],
-                                       int arrayLen,
-                                       const char *targetStrings[],
-                                       int targetStringsLen) {
-  if (arrayLen == 0 ||
-      targetStringsLen == 0 ||
-      array == NULL ||
-      targetStrings == NULL) {
-    return false;
-  }
-
-  // init matchedIndexes array with zeros - on each match set that index to 1 we've
-  // matched all targets strings if the matchedIndexes elements add up to targetStringsLen
-  int matchedIndexes[targetStringsLen];
-  memset(matchedIndexes, 0, sizeof(int) * targetStringsLen);
-
-
-  for (int arrayStrIdx = 0; arrayStrIdx < arrayLen; ++arrayStrIdx) {
-    const char *arrayStr = array[arrayStrIdx];
-
-    for (int targetStrIdx = 0; targetStrIdx < targetStringsLen; ++targetStrIdx) {
-      const char *targetStr = targetStrings[targetStrIdx];
-
-      const u_int32_t currStrLen = strlen(arrayStr);
-      const u_int32_t currTargetStrLen = strlen(targetStr);
-      const u_int32_t longestLen = currStrLen > currTargetStrLen ? currStrLen : currTargetStrLen;
-
-      if (strncmp(arrayStr, targetStr, longestLen) == 0) {
-        matchedIndexes[targetStrIdx] = 1;
-      }
-
-      int sum = 0;
-      for (int sumIndex = 0; sumIndex < targetStringsLen; sumIndex++) {
-        sum = sum + matchedIndexes[sumIndex];
-      }
-
-      if (sum == targetStringsLen) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
 
 bool has_unknown_flags(const char *flags[],
                        int numFlags,
@@ -360,22 +257,6 @@ bool has_unknown_flags(const char *flags[],
     }
   }
   return false;
-}
-
-bool count_occurrences_of_x_in_y(const char *x[],
-                                 int xLen,
-                                 const char *y[],
-                                 int yLen) {
-  int count = 0;
-  // go over all strings in y
-  for (int i = 0; i < yLen; ++i) {
-    const char *xString = y[i];
-    if (array_includes_string(x, xLen, xString)) {
-      // count each time x includes a current y string
-      count++;
-    }
-  }
-  return count;
 }
 
 
@@ -421,6 +302,7 @@ bool has_doubled_flag(const char *cliFlags[],
   return false;
 }
 
+
 jsonfmt_error_t get_spaces_flag_value(int argc,
                                       const char *argv[],
                                       struct jsonfmt_config *config) {
@@ -463,6 +345,7 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
   return JSONFMT_OK;
 };
 
+
 void set_flags_and_paths(int argc,
                          const char *argv[],
                          struct jsonfmt_config *config) {
@@ -502,6 +385,7 @@ void set_flags_and_paths(int argc,
     }
   }
 }
+
 
 void init_config(struct jsonfmt_config *config) {
   config->numSpaces = 0;
