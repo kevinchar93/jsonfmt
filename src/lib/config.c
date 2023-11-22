@@ -70,25 +70,25 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 
   const char *unknownFlag = NULL;
 
-  if (has_unknown_flags(config->flags, config->numFlags, &unknownFlag)) {
+  if (has_unknown_flags(config->flags, config->flagsLen, &unknownFlag)) {
     return JSONFMT_ERR_UNRECOGNISED_OPTION;
   }
 
   const char *doubledFlag = NULL;
 
-  if (has_doubled_flag(config->flags, config->numFlags, &doubledFlag)) {
+  if (has_doubled_flag(config->flags, config->flagsLen, &doubledFlag)) {
     return JSONFMT_ERR_REPEATED_OPTION;
   }
 
   const char *spacesFlags[] = {"-s", "--spaces"};
   config->useSpaces = array_includes_any_target_strings(config->flags,
-                                                        config->numFlags,
+                                                        config->flagsLen,
                                                         spacesFlags,
                                                         2);
 
   const char *tabsFlags[] = {"-t", "--tabs"};
   config->useTabs = array_includes_any_target_strings(config->flags,
-                                                      config->numFlags,
+                                                      config->flagsLen,
                                                       tabsFlags,
                                                       2);
 
@@ -98,13 +98,13 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 
   const char *lfFlags[] = {"--lf"};
   config->useLF = array_includes_any_target_strings(config->flags,
-                                                    config->numFlags,
+                                                    config->flagsLen,
                                                     lfFlags,
                                                     1);
 
   const char *crlfFlags[] = {"--crlf"};
   config->useCRLF = array_includes_any_target_strings(config->flags,
-                                                      config->numFlags,
+                                                      config->flagsLen,
                                                       crlfFlags,
                                                       1);
 
@@ -126,15 +126,14 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
 
   const char *writeFlags[] = {"-w", "--write"};
   config->writeToFile = array_includes_any_target_strings(config->flags,
-                                                          config->numFlags,
+                                                          config->flagsLen,
                                                           writeFlags,
                                                           2);
-
-  if (config->writeToFile && config->numPaths < 1) {
+  if (config->writeToFile && config->pathsLen < 1) {
     return JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED;
   }
 
-  if (config->numPaths < 1) {
+  if (config->pathsLen < 1) {
     config->useStdIn = true;
     return JSONFMT_OK;
   }
@@ -392,8 +391,8 @@ void set_flags_and_paths(int argc,
     bool isFlag = strncmp(currentCliArg, "-", 1) == 0 && argLen >= 2;
 
     if (isFlag) {
-      config->flags[config->numFlags] = currentCliArg;
-      config->numFlags += 1;
+      config->flags[config->flagsLen] = currentCliArg;
+      config->flagsLen += 1;
 
       // check if it's a --spaces / -s flag
       const char *spacesFlags[] = {"-s", "--spaces"};
@@ -408,8 +407,8 @@ void set_flags_and_paths(int argc,
         }
       }
     } else {
-      config->paths[config->numPaths] = currentCliArg;
-      config->numPaths += 1;
+      config->paths[config->pathsLen] = currentCliArg;
+      config->pathsLen += 1;
     }
   }
 }
@@ -424,9 +423,10 @@ void init_config(struct jsonfmt_config *config) {
   config->useCRLF = false;
   config->useStdIn = false;
   config->flags = NULL;
-  config->numFlags = 0;
+  config->flagsLen = 0;
   config->paths = NULL;
-  config->numPaths = 0;
+  config->pathsLen = 0;
   config->jsonFiles = NULL;
-  config->numJsonFiles = 0;
+  config->jsonFilesLen = 0;
+  config->errorString = NULL;
 }
