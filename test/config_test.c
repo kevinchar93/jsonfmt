@@ -2,10 +2,8 @@
 #include <criterion/new/assert.h>
 #include "config.h"
 #include <stdlib.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
 #define HELLO_WORLD_C "#include <stdio.h>\n\nint main() {\nprintf(\"Hello, World!\\n\");\nreturn 0;\n}"
 #define HELLO_WORLD_JS "console.log(\"hello, world\");"
@@ -116,7 +114,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
   cr_expect_eq(config->useCRLF, false);
   cr_expect_eq(config->useStdIn, true);
   cr_expect_eq(config->paths, NULL);
-  cr_expect_eq(config->jsonFilePaths, NULL);
+  cr_expect_eq(config->jsonFiles, NULL);
 
   free_jsonfmt_config(config);
 }
@@ -181,12 +179,12 @@ Test(new_jsonfmt_config, set_writeToFile_field,
      .description = "new_jsonfmt_config(…) returns jsonfmt_config with writeToFile set to TRUE when '-w' or '--write' flag is set") {
   enum {
     numTests = 2,
-    argc = 2
+    argc = 3
   };
 
   const char *argvs[numTests][argc] = {
-      {".../jsonfmt", "--write",},
-      {".../jsonfmt", "-w",},
+      {".../jsonfmt", "--write", "./fake-path"},
+      {".../jsonfmt", "-w",      "./fake-path"},
   };
 
   for (int i = 0; i < numTests; ++i) {
@@ -223,8 +221,7 @@ Test(new_jsonfmt_config, set_useLF_field,
 
 Test(new_jsonfmt_config, set_useCRLF_field,
      .disabled = false,
-     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useCRLF "
-                    "set to TRUE when '--crlf' flag is set") {
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useCRLF set to TRUE when '--crlf' flag is set") {
   int argc = 2;
   const char *argv[] = {
       ".../jsonfmt",
@@ -315,22 +312,6 @@ Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
   }
 }
 
-//Test(new_jsonfmt_config, fail_when_writeToFile_set_with_no_path,
-//     .description = "returns error 'JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED' when --write & flag is set & no path argument is set") {
-//  int argc = 3;
-//  char *argv[] = {
-//      ".../jsonfmt",
-//      "--write",
-//  };
-//  struct jsonfmt_config *config = NULL;
-//
-//  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-//
-//  cr_expect_eq(err, JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED);
-//
-//  free_jsonfmt_config(config);
-//};
-//
 Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
      .disabled = false,
      .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_UNRECOGNISED_OPTION' when given unrecognised flag argument") {
@@ -463,27 +444,126 @@ Test(new_jsonfmt_config, fail_when_value_given_for_spaces_flag_over_10,
   }
 }
 
+
+Test(new_jsonfmt_config, set_paths_field_correctly,
+     .disabled = false,
+     .description = "sets paths & numPaths fields in jsonfmt_config when paths are provided",
+     .init = setupTestDirAndFiles,
+     .fini = teardownTestDirAndFiles) {
+  enum {
+    numTests = 3,
+    argc = 5,
+    argvPathIndex = 2
+  };
+
+  int argcs[] = {3, 4, 5};
+  int expectedNumPathsAll[] = {1, 2, 3};
+
+  const char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--write", "./test-file-2.json",},
+      {".../jsonfmt", "--write", "./test-file-2.json", "test-file-3.json"},
+      {".../jsonfmt", "--write", "./test-file-3.json", "test-file-3.json", "./dir1/test-file-5.json"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    const int expectedNumPaths = expectedNumPathsAll[i];
+
+    const char **argv = argvs[i];
+    const int argc = argcs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_OK);
+    cr_expect_eq(config->numPaths, expectedNumPaths);
+
+    for (int j = 0; j < config->numPaths; ++j) {
+      const int argsOffset = 2;
+      const char *expectedPath = strdup(argvs[i][argsOffset + j]);
+
+      cr_expect_str_eq(config->paths[j], expectedPath);
+      free((void *) expectedPath);
+    }
+
+    free_jsonfmt_config(config);
+  }
+}
+
+//Test(new_jsonfmt_config, set_paths_field_multiple,
+//     .disabled = false,
+//     .description = "sets paths & jsonFiles fields in jsonfmt_config when a SINGLE path is provided",
+//     .init = setupTestDirAndFiles,
+//     .fini = teardownTestDirAndFiles) {
+//  enum {
+//    numTests = 5,
+//    argc = 3,
+//    argvPathIndex = 2
+//  };
+//
+//  const char *argvs[numTests][argc] = {
+//      {".../jsonfmt", "--write", "./test-file-3.json"},
+//      {".../jsonfmt", "--write", "test-file-3.json"},
+//      {".../jsonfmt", "--write", "./dir1/test-file-5.json"},
+//      {".../jsonfmt", "--write", "./dir1/dir2/test-file-6.json"},
+//      {".../jsonfmt", "--write", "./dir1/dir2/dir3/test-file-7.json"},
+//  };
+//
+//  for (int i = 0; i < numTests; ++i) {
+//    const char **argv = argvs[i];
+//
+//    struct jsonfmt_config *config = NULL;
+//
+//    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+//
+//    cr_expect_eq(err, JSONFMT_OK);
+//    cr_expect_eq(config->numPaths, 1);
+//    cr_expect_eq(config->paths[0], argv[argvPathIndex]);
+//    cr_expect_eq(config->paths[1], argv[argvPathIndex+1]);
+//    cr_expect_eq(config->paths[2], argv[argvPathIndex+2]);
+//    free_jsonfmt_config(config);
+//  }
+//}
+
+Test(new_jsonfmt_config, fail_when_writeToFile_set_with_no_path,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED' when --write & flag is set & no path argument is set") {
+  int argc = 2;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--write",
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED);
+
+  free_jsonfmt_config(config);
+};
+
 //Test(new_jsonfmt_config, fail_when_path_doesnt_exist,
-//     .disabled = true,
-//     .description = "returns error 'JSONFMT_ERR_PATH_DOES_NOT_EXIST' when given a non existent path") {
+//     .disabled = false,
+//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PATH_DOES_NOT_EXIST' when given a non existent path") {
 //  cr_assert(0);
 //}
 //
 //Test(new_jsonfmt_config, fail_when_path_no_json_files_found,
-//     .disabled = true,
-//     .description = "returns error 'JSONFMT_ERR_PATH_NO_JSON_FILES_FOUND' when no .json files found in input path") {
+//     .disabled = false,
+//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PATH_NO_JSON_FILES_FOUND' when no .json files found in input path") {
 //  cr_assert(0);
 //}
 //
+
 //Test(new_jsonfmt_config, fail_when_writeToFile_with_no_write_permission,
-//     .disabled = true,
-//     .description = "returns error 'JSONFMT_ERR_PERMS_CANNOT_WRITE_PATH' when --write & flag is set one of the input files does not have WRITE permission"
+//     .disabled = false,
+//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PERMS_CANNOT_WRITE_PATH' when --write & flag is set one of the input files does not have WRITE permission"
 //) {
 //  cr_assert(0);
 //}
 //
 //Test(new_jsonfmt_config, fail_when_paths_with_no_read_permission,
-//     .disabled = true,
-//     .description = "returns error 'JSONFMT_ERR_PERMS_CANNOT_READ_PATH' when one of the input files does not have READ permission") {
+//     .disabled = false,
+//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PERMS_CANNOT_READ_PATH' when one of the input files does not have READ permission") {
 //  cr_assert(0);
 //}
