@@ -124,7 +124,7 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
      .disabled = false,
      .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_UNRECOGNISED_OPTION' when given unrecognised flag argument") {
-  int argc = 3;
+  int argc = 2;
   const char *argv[] = {
       ".../jsonfmt",
       "--foo",
@@ -228,18 +228,18 @@ Test(new_jsonfmt_config, set_useTabs_field,
 
 Test(new_jsonfmt_config, fail_when_useSpaces_and_useTabs_is_set,
      .disabled = false,
-     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG' when -s/--spaces & -t/--tabs flags are set at the same time") {
+     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME' when -s/--spaces & -t/--tabs flags are set at the same time") {
 
   enum {
     numTests = 4,
-    argc = 3
+    argc = 4
   };
 
   const char *argvs[numTests][argc] = {
-      {".../jsonfmt", "--spaces", "--tabs"},
-      {".../jsonfmt", "-s",       "-t"},
-      {".../jsonfmt", "--tabs",   "-s"},
-      {".../jsonfmt", "-t",       "--spaces"},
+      {".../jsonfmt", "--spaces", "4",        "--tabs"},
+      {".../jsonfmt", "-s",       "4",        "-t"},
+      {".../jsonfmt", "--tabs",   "-s",       "4"},
+      {".../jsonfmt", "-t",       "--spaces", "4"},
   };
 
   for (int i = 0; i < numTests; ++i) {
@@ -249,7 +249,7 @@ Test(new_jsonfmt_config, fail_when_useSpaces_and_useTabs_is_set,
 
     jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 
-    cr_expect_eq(err, JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG);
+    cr_expect_eq(err, JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME);
 
     free_jsonfmt_config(config);
   }
@@ -426,7 +426,7 @@ Test(new_jsonfmt_config, set_useCRLF_field,
 
 Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
      .disabled = false,
-     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG' when --lf & --crlf flags are set at the same time") {
+     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME' when --lf & --crlf flags are set at the same time") {
 
   enum {
     numTests = 2,
@@ -445,7 +445,7 @@ Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
 
     jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 
-    cr_expect_eq(err, JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG);
+    cr_expect_eq(err, JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME);
 
     free_jsonfmt_config(config);
   }
