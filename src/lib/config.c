@@ -31,6 +31,11 @@ void set_flags_and_paths(int argc,
 void init_config(struct jsonfmt_config *config);
 
 jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config);
+
+
+void new_error_format_string(struct jsonfmt_config *config, const char *formatString, ...);
+
+
 // endregion
 
 // region module functions ------------------------------------------------------------
@@ -59,6 +64,10 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
   const char *unknownFlag = NULL;
 
   if (has_unknown_flags(config->flags, config->flagsLen, &unknownFlag)) {
+    jsonfmt_error_t err = JSONFMT_ERR_UNRECOGNISED_OPTION;
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            unknownFlag);
     return JSONFMT_ERR_UNRECOGNISED_OPTION;
   }
 
@@ -162,9 +171,7 @@ void safeFree(void *ptr) {
   ptr = NULL;
 }
 
-//void new_error_format_string(struct jsonfmt_config *config, const char *formatString, ...) {
-//
-//}
+
 
 
 //jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config) {
