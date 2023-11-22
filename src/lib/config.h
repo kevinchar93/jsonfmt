@@ -17,8 +17,9 @@ struct jsonfmt_config {
   int numFlags;
   const char **paths;
   int numPaths;
-  char **jsonFilePaths;
-  int numJsonFilePaths;
+  char **jsonFiles;
+  int numJsonFiles;
+  char *errorString;
 };
 
 jsonfmt_error_t new_jsonfmt_config(int argc, const char* argv[], struct jsonfmt_config **outConfig);
