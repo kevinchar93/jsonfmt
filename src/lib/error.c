@@ -3,8 +3,6 @@
 const char *const jsfmt_error_strings[] =
     {
         "no error",
-        "can't use --spaces(-s) & --tabs(-t) at the same time",
-        "can't use --lf & --crlf at the same time",
         "can't use flags set at the same time: %s",
         "can't use --write(-w) with no set 'path'",
         "unrecognised option: %s",
