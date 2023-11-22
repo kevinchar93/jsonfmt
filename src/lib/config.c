@@ -176,7 +176,73 @@ void safeFree(void *ptr) {
   if (ptr != NULL) {
     free(ptr);
   }
+  ptr = NULL;
 }
+
+//void new_error_format_string(struct jsonfmt_config *config, const char *formatString, ...) {
+//
+//}
+
+//jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config) {
+//
+//  const char *realPaths[config->pathsLen];
+//  const char *pathWithError = NULL;
+//  jsonfmt_error_t err = JSONFMT_OK;
+//
+//  // build up an array of resolved paths
+//  for (int i = 0; i < config->pathsLen; ++i) {
+//    realPaths[i] = NULL;
+//    const char *realPath = realpath(config->paths[i], NULL);
+//
+//    // path resolved OK - store it
+//    if (realPath != NULL) {
+//      realPaths[i] = realPath;
+//      continue;
+//    }
+//
+//    //  we hit an error resolving the path - convert error & exit loop
+//    pathWithError = config->paths[i];
+//    switch (errno) {
+//      case EACCES:
+//        err = JSONFMT_ERR_PATH_PERMS_CANNOT_READ;
+//        break;
+//      case EINVAL:
+//        err = JSONFMT_ERR_PATH_IS_NULL;
+//        break;
+//      case EIO:
+//        err = JSONFMT_ERR_PATH_IO_ERROR_OCCURRED;
+//        break;
+//      case ELOOP:
+//        err = JSONFMT_ERR_PATH_TOO_MANY_SYMLINKS;
+//        break;
+//      case ENAMETOOLONG:
+//        err = JSONFMT_ERR_PATH_IS_TOO_LONG;
+//        break;
+//      case ENOENT:
+//        err = JSONFMT_ERR_PATH_FILE_DOES_NOT_EXIST;
+//        break;
+//      case ENOTDIR:
+//        err = JSONFMT_ERR_PATH_PREFIX_IS_NOT_A_DIRECTORY;
+//        break;
+//    }
+//    break;
+//  }
+//
+//  // free memory for resolved paths if there was an error
+//  if (err != JSONFMT_OK) {
+//    for (int i = 0; i < config->pathsLen; ++i) {
+//      safeFree((void *) realPaths[i]);
+//    }
+//
+//    // generate an error string & return the error
+//    const char *formatStr = get_jsonfmt_error_string(err);
+//    config->errorStringLen = strlen(formatStr) + strlen(pathWithError);
+//    config->errorString = calloc(config->errorStringLen, sizeof(char));
+//
+//    snprintf(config->errorString, config->errorStringLen, formatStr, pathWithError);
+//    return err;
+//  }
+//}
 
 bool array_includes_any_target_strings(const char *array[],
                                        int arrayLen,
