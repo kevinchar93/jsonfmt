@@ -386,7 +386,7 @@ Test(new_jsonfmt_config, fail_when_no_value_given_for_spaces_flag,
 
 Test(new_jsonfmt_config, fail_when_value_given_for_spaces_flag_over_10,
      .disabled = false,
-     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_VALUE_TOO_HIGH' when no value given for --spaces is over 10") {
+     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_VALUE_OUT_OF_RANGE' when no value given for --spaces is over 10") {
   enum {
     numTests = 1,
     argc = 3
@@ -403,7 +403,7 @@ Test(new_jsonfmt_config, fail_when_value_given_for_spaces_flag_over_10,
 
     jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 
-    cr_expect_eq(err, JSONFMT_ERR_VALUE_TOO_HIGH);
+    cr_expect_eq(err, JSONFMT_ERR_VALUE_OUT_OF_RANGE);
 
     free_jsonfmt_config(config);
   }
