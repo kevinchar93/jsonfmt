@@ -55,8 +55,7 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                    const char *argv[],
                                    struct jsonfmt_config **outConfig) {
 
-  *outConfig = (struct jsonfmt_config *) malloc(sizeof(struct jsonfmt_config));
-  memset(*outConfig, 0, sizeof(struct jsonfmt_config));
+  *outConfig = calloc(1, sizeof(struct jsonfmt_config));
 
   struct jsonfmt_config *config = *outConfig;
 
@@ -98,7 +97,15 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                       2);
 
   if (config->useSpaces && config->useTabs) {
-    return JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG;
+    jsonfmt_error_t err = JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
+//    const char *formatStr = get_jsonfmt_error_string(err);
+//
+//    const char *valueStr = "--spaces(-s) & --tabs(-t) ";
+//    config->errorStringLen = strlen(formatStr) + strlen(valueStr);
+//    config->errorString = calloc(config->errorStringLen, sizeof(char));
+//
+//    snprintf(config->errorString, config->errorStringLen, formatStr, pathWithError);
+    return err;
   }
 
   const char *lfFlags[] = {"--lf"};
@@ -113,7 +120,7 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
                                                       crlfFlags,
                                                       1);
   if (config->useLF && config->useCRLF) {
-    return JSONFMT_ERR_CANNOT_USE_FLAG_SET_AT_SAME_TIME;
+    return JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
   }
 
   if (config->useSpaces) {
@@ -142,7 +149,9 @@ jsonfmt_error_t new_jsonfmt_config(int argc,
     return JSONFMT_OK;
   }
 
-  return create_json_files_array(config);
+  return JSONFMT_OK;
+
+//  return create_json_files_array(config);
 }
 
 
@@ -358,13 +367,11 @@ void set_flags_and_paths(int argc,
                          const char *argv[],
                          struct jsonfmt_config *config) {
   // init memory for args & flags char pointer arrays - base size on argc
-  config->paths = malloc(argc * sizeof(char *));
-  config->flags = malloc(argc * sizeof(char *));
+  config->paths = calloc(argc, sizeof(char*));
+  config->flags = calloc(argc, sizeof(char*));
 
-  for (int i = 0; i < argc; i++) {
-    // skip first CLI arg (program name)
-    if (i == 0) continue;
-
+  //  start i @ 1 to skip 1st CLI arg (program name)
+  for (int i = 1; i < argc; i++) {
     const char *currentCliArg = argv[i];
     const u_int32_t argLen = strlen(currentCliArg);
 
@@ -376,7 +383,6 @@ void set_flags_and_paths(int argc,
     if (isFlag) {
       config->flags[config->flagsLen] = currentCliArg;
       config->flagsLen += 1;
-
       // check if it's a --spaces / -s flag
       const char *spacesFlags[] = {"-s", "--spaces"};
       if (array_includes_string(spacesFlags, 2, currentCliArg)) {
