@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <limits.h>
 
+// region module functions ------------------------------------------------------------
+
 void safeFree(void *ptr);
 
 bool array_includes_any_target_strings(const char *array[],
@@ -45,9 +47,9 @@ void set_flags_and_paths(int argc,
 void init_config(struct jsonfmt_config *config);
 
 jsonfmt_error_t create_json_files_array(struct jsonfmt_config *config);
+// endregion
 
-// -----------------------------------------------------------------------------
-// module functions
+// region module functions ------------------------------------------------------------
 
 jsonfmt_error_t new_jsonfmt_config(int argc,
                                    const char *argv[],
@@ -151,9 +153,9 @@ jsonfmt_error_t free_jsonfmt_config(struct jsonfmt_config *config) {
   safeFree(config);
   return JSONFMT_OK;
 }
+// endregion
 
-// -----------------------------------------------------------------------------
-// internal functions
+// region internal functions ---------------------------------------------------
 
 void safeFree(void *ptr) {
   if (ptr != NULL) {
@@ -411,3 +413,5 @@ void init_config(struct jsonfmt_config *config) {
   config->jsonFilesLen = 0;
   config->errorString = NULL;
 }
+// endregion
+
