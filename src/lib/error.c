@@ -2,19 +2,25 @@
 
 const char *const jsfmt_error_strings[] =
     {
-        "No Error.",
-        "can't use --spaces(-s) & --tabs(-t) at the same time.",
-        "can't use --lf & --crlf at the same time.",
-        "can't use --write(-w) with no set 'path.'",
-        "can't read file(s) at given path, permission denied:",
-        "can't write file(s) at given path, permission denied:",
-        "unrecognised option:",
-        "incorrect type for arg:",
-        "paths does not exist:",
-        "no .json files found in input path(s):",
+        "no error",
+        "can't use --spaces(-s) & --tabs(-t) at the same time",
+        "can't use --lf & --crlf at the same time",
+        "can't use flags set at the same time: %s",
+        "can't use --write(-w) with no set 'path'",
+        "unrecognised option: %s",
+        "incorrect type for arg: %s",
         "option appears more than once: %",
-        "no value provided for option: %s",
-        "value provided for arg ('%s') is too high:",
+        "expected value for option: %s",
+        "value provided for option ('%s') is out of range: (%s)",
+        "permission denied reading path '%s'",
+        "permission denied writing path '%s'",
+        "path does not exist: %s",
+        "no .json files found in input path(s)",
+        "path is resolved to be null: %s",
+        "i/o error occurred resolving path: %s",
+        "too many symlinks resolving path: %s",
+        "path is too long to resolve: %s ",
+        "prefix in path is not a directory: %s",
     };
 
 
