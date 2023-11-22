@@ -91,7 +91,7 @@ void teardownTestDirAndFiles(void) {
 
 
 
-// region basic tests ----------------------------------------------------------
+// region defaults tests ----------------------------------------------------------
 
 Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
      .disabled = false,
@@ -110,16 +110,86 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
 
   cr_expect_eq(config->useSpaces, true);
   cr_expect_eq(config->numSpaces, 2);
+  cr_expect_eq(config->spacesFlagIndex, -1);
   cr_expect_eq(config->useTabs, false);
   cr_expect_eq(config->writeToFile, false);
   cr_expect_eq(config->useLF, true);
   cr_expect_eq(config->useCRLF, false);
   cr_expect_eq(config->useStdIn, true);
+
+  cr_expect_eq(config->flags, NULL);
+  cr_expect_eq(config->flagsLen, 0);
+
   cr_expect_eq(config->paths, NULL);
+  cr_expect_eq(config->pathsLen, 0);
+
   cr_expect_eq(config->jsonFiles, NULL);
+  cr_expect_eq(config->jsonFilesLen, 0);
+
+  cr_expect_eq(config->errorString, NULL);
+  cr_expect_eq(config->errorStringLen, 0);
 
   free_jsonfmt_config(config);
 }
+
+Test(new_jsonfmt_config, set_default_useSpaces_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useSpaces DEFAULTED to TRUE with numSpaces DEFAULTED to 2 when spaces / tabs flag not set") {
+  int argc = 3;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "fakePath"
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_OK);
+  cr_expect_eq(config->useSpaces, true);
+  cr_expect_eq(config->numSpaces, 2);
+  free_jsonfmt_config(config);
+}
+
+Test(new_jsonfmt_config, set_default_useLF_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useLF DEFAULTED to TRUE when lf / crlf flag not set") {
+  int argc = 3;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "fakePath"
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_OK);
+  cr_expect_eq(config->useLF, true);
+  free_jsonfmt_config(config);
+}
+
+Test(new_jsonfmt_config, set_default_useStdIn_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useStdIn DEFAULTED to TRUE when NO path provided on CLI") {
+  int argc = 3;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--spaces",
+      "8",
+      "--lf"
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_OK);
+  cr_expect_eq(config->useStdIn, true);
+  free_jsonfmt_config(config);
+}
+
+// endregion
+
+
+// region basic tests ----------------------------------------------------------
 
 Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
      .disabled = false,
@@ -453,24 +523,6 @@ Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
 // endregion
 
 // region path tests -----------------------------------------------------------
-Test(new_jsonfmt_config, set_useStdIn_field,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useStdIn set to TRUE when NO path provided on CLI") {
-  int argc = 3;
-  const char *argv[] = {
-      ".../jsonfmt",
-      "--spaces",
-      "8",
-      "--lf"
-  };
-  struct jsonfmt_config *config = NULL;
-
-  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-  cr_expect_eq(err, JSONFMT_OK);
-  cr_expect_eq(config->useStdIn, true);
-  free_jsonfmt_config(config);
-}
 
 Test(new_jsonfmt_config, set_paths_field_correctly,
      .disabled = false,
