@@ -48,7 +48,6 @@ void setupTestDirAndFiles(void) {
   fputs(HELLO_WORLD_JSON, fp);
   fclose(fp);
 
-
   fp = fopen("./dir1/test-file-4.js", "w+");
   cr_assert_not_null(fp);
   fputs(HELLO_WORLD_JS, fp);
@@ -91,6 +90,9 @@ void teardownTestDirAndFiles(void) {
 }
 
 
+
+// region basic tests ----------------------------------------------------------
+
 Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
      .disabled = false,
      .description = "new_jsonfmt_config(…) returns jsonfmt_config with correct defaults when no input given on CLI") {
@@ -119,6 +121,56 @@ Test(new_jsonfmt_config, set_jsonfmt_config_defaults_when_no_flags_given,
   free_jsonfmt_config(config);
 }
 
+Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_UNRECOGNISED_OPTION' when given unrecognised flag argument") {
+  int argc = 3;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--foo",
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_ERR_UNRECOGNISED_OPTION);
+
+  free_jsonfmt_config(config);
+}
+
+Test(new_jsonfmt_config, fail_when_options_are_repeated,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_REPEATED_OPTION' when none variadic flags are repeated more than once") {
+
+  enum {
+    numTests = 5,
+    argc = 3
+  };
+
+  const char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--spaces", "-s"},
+      {".../jsonfmt", "--tabs",   "-t"},
+      {".../jsonfmt", "--write",  "-w"},
+      {".../jsonfmt", "--lf",     "--lf"},
+      {".../jsonfmt", "--crlf",   "--crlf"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    const char **argv = argvs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_ERR_REPEATED_OPTION);
+
+    free_jsonfmt_config(config);
+  }
+}
+// endregion
+
+
+// region spaces & tabs tests --------------------------------------------------
 Test(new_jsonfmt_config, set_useSpaces_and_numSpaces_fields,
      .disabled = false,
      .description = "new_jsonfmt_config(…) returns jsonfmt_config with useSpaces set to true & correct value in numSpaces when '-s <num>' or '--spaces <num>' flag is set") {
@@ -174,88 +226,6 @@ Test(new_jsonfmt_config, set_useTabs_field,
   }
 }
 
-Test(new_jsonfmt_config, set_writeToFile_field,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns jsonfmt_config with writeToFile set to TRUE when '-w' or '--write' flag is set") {
-  enum {
-    numTests = 2,
-    argc = 3
-  };
-
-  const char *argvs[numTests][argc] = {
-      {".../jsonfmt", "--write", "./fake-path"},
-      {".../jsonfmt", "-w",      "./fake-path"},
-  };
-
-  for (int i = 0; i < numTests; ++i) {
-    const char **argv = argvs[i];
-
-    struct jsonfmt_config *config = NULL;
-
-    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-    cr_expect_eq(err, JSONFMT_OK);
-    cr_expect_eq(config->writeToFile, true);
-
-    free_jsonfmt_config(config);
-  }
-}
-
-Test(new_jsonfmt_config, set_useLF_field,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useLF set to TRUE in jsonfmt_config when '--lf' flag is set") {
-  int argc = 2;
-  const char *argv[] = {
-      ".../jsonfmt",
-      "--lf",
-  };
-  struct jsonfmt_config *config = NULL;
-
-  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-  cr_expect_eq(err, JSONFMT_OK);
-  cr_expect_eq(config->useLF, true);
-
-  free_jsonfmt_config(config);
-}
-
-Test(new_jsonfmt_config, set_useCRLF_field,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useCRLF set to TRUE when '--crlf' flag is set") {
-  int argc = 2;
-  const char *argv[] = {
-      ".../jsonfmt",
-      "--crlf",
-  };
-  struct jsonfmt_config *config = NULL;
-
-  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-  cr_expect_eq(err, JSONFMT_OK);
-  cr_expect_eq(config->useCRLF, true);
-
-  free_jsonfmt_config(config);
-}
-
-Test(new_jsonfmt_config, set_useStdIn_field,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useStdIn set to TRUE when NO path provided on CLI") {
-  int argc = 3;
-  const char *argv[] = {
-      ".../jsonfmt",
-      "--spaces",
-      "8",
-      "--lf"
-  };
-  struct jsonfmt_config *config = NULL;
-
-  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-  cr_expect_eq(err, JSONFMT_OK);
-  cr_expect_eq(config->useStdIn, true);
-  free_jsonfmt_config(config);
-}
-
 Test(new_jsonfmt_config, fail_when_useSpaces_and_useTabs_is_set,
      .disabled = false,
      .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANT_SET_TABS_AND_SPACES_FLAG' when -s/--spaces & -t/--tabs flags are set at the same time") {
@@ -284,81 +254,6 @@ Test(new_jsonfmt_config, fail_when_useSpaces_and_useTabs_is_set,
     free_jsonfmt_config(config);
   }
 }
-
-Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG' when --lf & --crlf flags are set at the same time") {
-
-  enum {
-    numTests = 2,
-    argc = 3
-  };
-
-  const char *argvs[numTests][argc] = {
-      {".../jsonfmt", "--lf",   "--crlf"},
-      {".../jsonfmt", "--crlf", "--lf"},
-  };
-
-  for (int i = 0; i < numTests; ++i) {
-    const char **argv = argvs[i];
-
-    struct jsonfmt_config *config = NULL;
-
-    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-    cr_expect_eq(err, JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG);
-
-    free_jsonfmt_config(config);
-  }
-}
-
-Test(new_jsonfmt_config, fail_when_unrecognised_argument_given,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_UNRECOGNISED_OPTION' when given unrecognised flag argument") {
-  int argc = 3;
-  const char *argv[] = {
-      ".../jsonfmt",
-      "--foo",
-  };
-  struct jsonfmt_config *config = NULL;
-
-  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-  cr_expect_eq(err, JSONFMT_ERR_UNRECOGNISED_OPTION);
-
-  free_jsonfmt_config(config);
-}
-
-Test(new_jsonfmt_config, fail_when_options_are_repeated,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_REPEATED_OPTION' when none variadic flags are repeated more than once") {
-
-  enum {
-    numTests = 5,
-    argc = 3
-  };
-
-  const char *argvs[numTests][argc] = {
-      {".../jsonfmt", "--spaces", "-s"},
-      {".../jsonfmt", "--tabs",   "-t"},
-      {".../jsonfmt", "--write",  "-w"},
-      {".../jsonfmt", "--lf",     "--lf"},
-      {".../jsonfmt", "--crlf",   "--crlf"},
-  };
-
-  for (int i = 0; i < numTests; ++i) {
-    const char **argv = argvs[i];
-
-    struct jsonfmt_config *config = NULL;
-
-    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-    cr_expect_eq(err, JSONFMT_ERR_REPEATED_OPTION);
-
-    free_jsonfmt_config(config);
-  }
-}
-
 
 Test(new_jsonfmt_config, fail_when_invalid_argument_type_given_spaces,
      .disabled = false,
@@ -443,11 +338,143 @@ Test(new_jsonfmt_config, fail_when_value_given_for_spaces_flag_over_10,
     free_jsonfmt_config(config);
   }
 }
+// endregion
 
+
+// region write tests ----------------------------------------------------------
+Test(new_jsonfmt_config, set_writeToFile_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with writeToFile set to TRUE when '-w' or '--write' flag is set") {
+  enum {
+    numTests = 2,
+    argc = 3
+  };
+
+  const char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--write", "./fake-path"},
+      {".../jsonfmt", "-w",      "./fake-path"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    const char **argv = argvs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_OK);
+    cr_expect_eq(config->writeToFile, true);
+
+    free_jsonfmt_config(config);
+  }
+}
+
+Test(new_jsonfmt_config, fail_when_writeToFile_set_with_no_path,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED' when --write & flag is set & no path argument is set") {
+  int argc = 2;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--write",
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED);
+
+  free_jsonfmt_config(config);
+};
+// endregion
+
+// region lf / crlf tests ------------------------------------------------------
+Test(new_jsonfmt_config, set_useLF_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useLF set to TRUE in jsonfmt_config when '--lf' flag is set") {
+  int argc = 2;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--lf",
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_OK);
+  cr_expect_eq(config->useLF, true);
+
+  free_jsonfmt_config(config);
+}
+
+Test(new_jsonfmt_config, set_useCRLF_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useCRLF set to TRUE when '--crlf' flag is set") {
+  int argc = 2;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--crlf",
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_OK);
+  cr_expect_eq(config->useCRLF, true);
+
+  free_jsonfmt_config(config);
+}
+
+Test(new_jsonfmt_config, fail_when_useLF_and_useCRLF_is_set,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns error 'JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG' when --lf & --crlf flags are set at the same time") {
+
+  enum {
+    numTests = 2,
+    argc = 3
+  };
+
+  const char *argvs[numTests][argc] = {
+      {".../jsonfmt", "--lf",   "--crlf"},
+      {".../jsonfmt", "--crlf", "--lf"},
+  };
+
+  for (int i = 0; i < numTests; ++i) {
+    const char **argv = argvs[i];
+
+    struct jsonfmt_config *config = NULL;
+
+    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+    cr_expect_eq(err, JSONFMT_ERR_CANT_SET_LF_AND_CRLF_FLAG);
+
+    free_jsonfmt_config(config);
+  }
+}
+// endregion
+
+// region path tests -----------------------------------------------------------
+Test(new_jsonfmt_config, set_useStdIn_field,
+     .disabled = false,
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with useStdIn set to TRUE when NO path provided on CLI") {
+  int argc = 3;
+  const char *argv[] = {
+      ".../jsonfmt",
+      "--spaces",
+      "8",
+      "--lf"
+  };
+  struct jsonfmt_config *config = NULL;
+
+  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
+
+  cr_expect_eq(err, JSONFMT_OK);
+  cr_expect_eq(config->useStdIn, true);
+  free_jsonfmt_config(config);
+}
 
 Test(new_jsonfmt_config, set_paths_field_correctly,
      .disabled = false,
-     .description = "sets paths & numPaths fields in jsonfmt_config when paths are provided",
+     .description = "new_jsonfmt_config(…) returns jsonfmt_config with valid paths & pathsLen fields when paths are provided on CLI",
      .init = setupTestDirAndFiles,
      .fini = teardownTestDirAndFiles) {
   enum {
@@ -476,9 +503,9 @@ Test(new_jsonfmt_config, set_paths_field_correctly,
     jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 
     cr_expect_eq(err, JSONFMT_OK);
-    cr_expect_eq(config->numPaths, expectedNumPaths);
+    cr_expect_eq(config->pathsLen, expectedNumPaths);
 
-    for (int j = 0; j < config->numPaths; ++j) {
+    for (int j = 0; j < config->pathsLen; ++j) {
       const int argsOffset = 2;
       const char *expectedPath = strdup(argvs[i][argsOffset + j]);
 
@@ -490,57 +517,30 @@ Test(new_jsonfmt_config, set_paths_field_correctly,
   }
 }
 
-//Test(new_jsonfmt_config, set_paths_field_multiple,
+//Test(new_jsonfmt_config, set_jsonFiles_field_from_paths_and_directories,
 //     .disabled = false,
-//     .description = "sets paths & jsonFiles fields in jsonfmt_config when a SINGLE path is provided",
+//     .description = "new_jsonfmt_config(…) returns jsonfmt_config with jsonFiles fields set when paths to files & directories are given",
 //     .init = setupTestDirAndFiles,
 //     .fini = teardownTestDirAndFiles) {
 //  enum {
-//    numTests = 5,
 //    argc = 3,
-//    argvPathIndex = 2
 //  };
 //
-//  const char *argvs[numTests][argc] = {
-//      {".../jsonfmt", "--write", "./test-file-3.json"},
-//      {".../jsonfmt", "--write", "test-file-3.json"},
-//      {".../jsonfmt", "--write", "./dir1/test-file-5.json"},
-//      {".../jsonfmt", "--write", "./dir1/dir2/test-file-6.json"},
-//      {".../jsonfmt", "--write", "./dir1/dir2/dir3/test-file-7.json"},
-//  };
+//  const char argv[argc] = {".../jsonfmt", "--write", "./test-file-3.json"};
 //
-//  for (int i = 0; i < numTests; ++i) {
-//    const char **argv = argvs[i];
+//  struct jsonfmt_config *config = NULL;
 //
-//    struct jsonfmt_config *config = NULL;
+//  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
 //
-//    jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-//
-//    cr_expect_eq(err, JSONFMT_OK);
-//    cr_expect_eq(config->numPaths, 1);
-//    cr_expect_eq(config->paths[0], argv[argvPathIndex]);
-//    cr_expect_eq(config->paths[1], argv[argvPathIndex+1]);
-//    cr_expect_eq(config->paths[2], argv[argvPathIndex+2]);
-//    free_jsonfmt_config(config);
-//  }
+//  cr_expect_eq(err, JSONFMT_OK);
+//  cr_expect_eq(config->pathsLen, 1);
+//  cr_expect_eq(config->paths[0], argv[argvPathIndex]);
+//  cr_expect_eq(config->paths[1], argv[argvPathIndex + 1]);
+//  cr_expect_eq(config->paths[2], argv[argvPathIndex + 2]);
+//  free_jsonfmt_config(config);
 //}
+// endregion
 
-Test(new_jsonfmt_config, fail_when_writeToFile_set_with_no_path,
-     .disabled = false,
-     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED' when --write & flag is set & no path argument is set") {
-  int argc = 2;
-  const char *argv[] = {
-      ".../jsonfmt",
-      "--write",
-  };
-  struct jsonfmt_config *config = NULL;
-
-  jsonfmt_error_t err = new_jsonfmt_config(argc, argv, &config);
-
-  cr_expect_eq(err, JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED);
-
-  free_jsonfmt_config(config);
-};
 
 //Test(new_jsonfmt_config, fail_when_path_doesnt_exist,
 //     .disabled = false,
@@ -557,13 +557,13 @@ Test(new_jsonfmt_config, fail_when_writeToFile_set_with_no_path,
 
 //Test(new_jsonfmt_config, fail_when_writeToFile_with_no_write_permission,
 //     .disabled = false,
-//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PERMS_CANNOT_WRITE_PATH' when --write & flag is set one of the input files does not have WRITE permission"
+//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PATH_PERMS_CANNOT_WRITE' when --write & flag is set one of the input files does not have WRITE permission"
 //) {
 //  cr_assert(0);
 //}
 //
 //Test(new_jsonfmt_config, fail_when_paths_with_no_read_permission,
 //     .disabled = false,
-//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PERMS_CANNOT_READ_PATH' when one of the input files does not have READ permission") {
+//     .description = "new_jsonfmt_config(…) returns  error 'JSONFMT_ERR_PATH_PERMS_CANNOT_READ' when one of the input files does not have READ permission") {
 //  cr_assert(0);
 //}
