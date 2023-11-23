@@ -65,16 +65,22 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
 
   if (has_unknown_flags(config->flags, config->flagsLen, &unknownFlag)) {
     jsonfmt_error_t err = JSONFMT_ERR_UNRECOGNISED_OPTION;
+
     new_error_format_string(config,
                             get_jsonfmt_error_string(err),
                             unknownFlag);
-    return JSONFMT_ERR_UNRECOGNISED_OPTION;
+    return err;
   }
 
   const char *doubledFlag = NULL;
 
   if (has_doubled_flag(config->flags, config->flagsLen, &doubledFlag)) {
-    return JSONFMT_ERR_REPEATED_OPTION;
+    jsonfmt_error_t err = JSONFMT_ERR_REPEATED_OPTION;
+
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            doubledFlag);
+    return err;
   }
 
   const char *spacesFlags[] = {"-s", "--spaces"};
@@ -89,8 +95,15 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
     if (err != JSONFMT_OK) {
       return err;
     }
-    if (config->numSpaces > 10) {
-      return JSONFMT_ERR_VALUE_OUT_OF_RANGE;
+    if (config->numSpaces > 10 || config->numSpaces < 1) {
+      err = JSONFMT_ERR_VALUE_OUT_OF_RANGE;
+
+      new_error_format_string(config,
+                              get_jsonfmt_error_string(err),
+                              "--spaces/-s",
+                              "1",
+                              "10");
+      return err;
     }
   }
 
@@ -101,14 +114,12 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
                                                       2);
   // check user hasn't set tabs & spaces options
   if (config->useSpaces && config->useTabs) {
-    return JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
-//    const char *formatStr = get_jsonfmt_error_string(err);
-//
-//    const char *valueStr = "--spaces(-s) & --tabs(-t) ";
-//    config->errorStringLen = strlen(formatStr) + strlen(valueStr);
-//    config->errorString = calloc(config->errorStringLen, sizeof(char));
-//
-//    snprintf(config->errorString, config->errorStringLen, formatStr, pathWithError);
+    jsonfmt_error_t err = JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
+
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            "--spaces/-s & --tabs/-t");
+    return err;
   }
 
   // add default spaces settings if neither spaces/tabs is set by the user
@@ -129,7 +140,12 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
                                                       1);
   // check user hasn't set lf & crlf options
   if (config->useLF && config->useCRLF) {
-    return JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
+    jsonfmt_error_t err = JSONFMT_ERR_CANNOT_USE_FLAGS_AT_SAME_TIME;
+
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            "--lf & --crlf");
+    return err;
   }
 
   // add default line settings if neither lf/crlf is set by the user
@@ -144,12 +160,16 @@ jsonfmt_error_t new_jsonfmt_config(int argcOrigin,
                                                           2);
   // check user hasn't set write flag with no paths to write output to
   if (config->writeToFile && config->pathsLen < 1) {
-    return JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED;
+    jsonfmt_error_t err = JSONFMT_ERR_CANNOT_WRITE_NO_PATH_PROVIDED;
+
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            NULL);
+    return err;
   }
 
   return JSONFMT_OK;
-
-//  return create_json_files_array(config);
+  //TODO:  return create_json_files_array(config);
 }
 
 
@@ -318,7 +338,12 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
   int spacesValueIndex = config->spacesFlagIndex + 1;
 
   if (spacesValueIndex >= argc) {
-    return JSONFMT_ERR_NO_VALUE_PROVIDED;
+    jsonfmt_error_t err = JSONFMT_ERR_NO_VALUE_PROVIDED;
+
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            "--spaces/-s");
+    return err;
   }
 
   const char *spacesValueStr = argv[spacesValueIndex];
@@ -328,24 +353,17 @@ jsonfmt_error_t get_spaces_flag_value(int argc,
   errno = 0;
   value = strtol(spacesValueStr, &endPtr, 10);
 
-  if (errno == ERANGE && (value == LONG_MAX || value == LONG_MIN)) {
-    // error - parsed value falls out of range
-    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
-  }
+  if ((errno == ERANGE && (value == LONG_MAX || value == LONG_MIN)) || // parsed value falls out of range
+      (errno != 0 && value == 0) ||       // the value could not be parsed
+      (*endPtr != '\0') ||                // number has string on end of it eg "345fd"
+      (endPtr == spacesValueStr)          // no digits found in the string "spacesValueStr"
+      ) {
+    jsonfmt_error_t err = JSONFMT_ERR_INCORRECT_ARG_TYPE;
 
-  if (errno != 0 && value == 0) {
-    // an error happened & the value could not be parsed
-    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
-  }
-
-  if (*endPtr != '\0') {
-    // error - number has string on end of it eg "345fd"
-    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
-  }
-
-  if (endPtr == spacesValueStr) {
-    // error - no digits found in the string "spacesValueStr"
-    return JSONFMT_ERR_INCORRECT_ARG_TYPE;
+    new_error_format_string(config,
+                            get_jsonfmt_error_string(err),
+                            "--spaces/-s");
+    return err;
   }
 
   config->numSpaces = value;
